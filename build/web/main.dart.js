@@ -93182,11 +93182,11 @@ break
 default:s=null}return s},
 gajc(){var s=this.f
 if(s!=null)return s
-switch(this.d.a){case 0:s=0.06
+switch(this.d.a){case 0:s=0.09
 break
-case 1:s=0.04
+case 1:s=0.07
 break
-case 2:s=0.14
+case 2:s=0.18
 break
 default:s=null}return s},
 gakW(){switch(this.d.a){case 0:var s=B.j
@@ -94321,7 +94321,7 @@ p=A.y(a).ok.x
 p=A.ak("Kigali Tech Store",n,n,n,p==null?n:p.qM(13),n,n)
 o=A.y(a).ok.z
 m.push(new A.aY(B.cK,A.cs(n,A.c8(A.b([q,B.fT,A.cm(A.bK(A.b([p,A.ak("Verified Vendor",n,n,n,o==null?n:o.hq(B.k3,11),n,n)],s),B.Z,B.l,B.u),1),B.Jh],s),B.C,B.l,B.u,0,n),B.o,n,n,new A.bX(B.dS,n,n,r,n,n,B.Y),n,n,n,B.HH,n,n,n),n))
-return new A.la(A.cW(A.bK(m,B.bE,B.l,B.u),n,240),B.e7,B.j,0.05,n)}}
+return new A.la(A.cW(A.bK(m,B.bE,B.l,B.u),n,240),B.e7,B.j,0.07,n)}}
 A.al3.prototype={
 $1(a){var s,r,q,p,o,n,m,l,k=null,j={}
 j.a=null
@@ -101244,7 +101244,7 @@ B.Rv=new A.vk(1,"scroll")
 B.Rw=new A.vk(3,"scale")
 B.Rx=new A.vk(4,"unknown")
 B.Ry=new A.Cl(null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.JE=new A.la(B.fU,B.po,B.ob,0.16,null)
+B.JE=new A.la(B.fU,B.po,B.ob,0.2,null)
 B.Rz=new A.nG(0,0,0,0,null,null,B.JE,null)
 B.RY=new A.vr(null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
 B.RZ=new A.Cs(null,null,null,null,null,null,null,null,null)

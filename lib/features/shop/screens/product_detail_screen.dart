@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/mock_data/products_mock.dart';
+import '../../../core/models/models.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_format.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../../state/cart_state.dart';
+import '../widgets/product_card.dart';
 import 'checkout_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -49,6 +51,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final width = MediaQuery.sizeOf(context).width;
     final isDesktop = width >= kDesktopBreakpoint;
     final images = product.allImages;
+    final recommended = _recommendedProducts(product);
 
     final gallery = Column(
       children: [
@@ -336,8 +339,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1100),
-              child: isDesktop
-                  ? Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (isDesktop)
+                    Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(child: gallery),
@@ -345,19 +351,77 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         Expanded(child: details),
                       ],
                     )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        gallery,
-                        const SizedBox(height: 24),
-                        details,
-                      ],
+                  else ...[
+                    gallery,
+                    const SizedBox(height: 24),
+                    details,
+                  ],
+                  if (recommended.isNotEmpty) ...[
+                    const SizedBox(height: 40),
+                    Text(
+                      'RECOMMENDED',
+                      style: Theme.of(context).textTheme.labelLarge,
                     ),
+                    const SizedBox(height: 16),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final gap = isDesktop ? 16.0 : 10.0;
+                        final cardWidth =
+                            (constraints.maxWidth - gap * 2) / 3;
+                        final cardHeight = cardWidth / (isDesktop ? 0.72 : 0.68);
+                        return SizedBox(
+                          height: cardHeight,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              for (var i = 0; i < recommended.length; i++) ...[
+                                if (i > 0) SizedBox(width: gap),
+                                Expanded(
+                                  child: ProductCard(
+                                    product: recommended[i],
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => ProductDetailScreen(
+                                            productId: recommended[i].id,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  List<Product> _recommendedProducts(Product product) {
+    final sameCategory = ProductsMock.byCategory(product.category)
+        .where((p) => p.id != product.id)
+        .toList();
+    if (sameCategory.length >= 3) {
+      return sameCategory.take(3).toList();
+    }
+
+    final extras = ProductsMock.products
+        .where(
+          (p) =>
+              p.id != product.id &&
+              !sameCategory.any((s) => s.id == p.id),
+        )
+        .toList();
+    return [...sameCategory, ...extras].take(3).toList();
   }
 }
 
