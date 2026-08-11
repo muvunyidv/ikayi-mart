@@ -6,7 +6,7 @@ import '../../../core/mock_data/products_mock.dart';
 import '../../../core/models/models.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/app_footer.dart';
+import '../../../core/widgets/widgets.dart';
 import '../../../state/cart_state.dart';
 import '../../../state/navigation_state.dart';
 import '../widgets/product_card.dart';
@@ -150,34 +150,35 @@ class _LandingScreenState extends State<LandingScreen> {
     final crossAxisCount = isDesktop ? 4 : 2;
 
     return Scaffold(
-      backgroundColor: AppColors.surfaceBackground,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _Header(
-              isDesktop: isDesktop,
-              cartCount: cart.itemCount,
-              locationLabel: nav.locationLabel,
-              searchController: _searchController,
-              onSearch: (v) => setState(() => _query = v),
-              onLocation: () => _pickLocation(nav),
-              onCart: () {
-                if (cart.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Your cart is empty')),
+      backgroundColor: Colors.transparent,
+      body: ImigongoBackground(
+        child: SafeArea(
+          child: Column(
+            children: [
+              _Header(
+                isDesktop: isDesktop,
+                cartCount: cart.itemCount,
+                locationLabel: nav.locationLabel,
+                searchController: _searchController,
+                onSearch: (v) => setState(() => _query = v),
+                onLocation: () => _pickLocation(nav),
+                onCart: () {
+                  if (cart.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Your cart is empty')),
+                    );
+                    return;
+                  }
+                  _scrollToTop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const CheckoutScreen()),
                   );
-                  return;
-                }
-                _scrollToTop();
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const CheckoutScreen()),
-                );
-              },
-              onVendor: () {
-                _scrollToTop();
-                nav.setMode(AppMode.vendor);
-              },
-            ),
+                },
+                onVendor: () {
+                  _scrollToTop();
+                  nav.setMode(AppMode.vendor);
+                },
+              ),
             Expanded(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -298,6 +299,7 @@ class _LandingScreenState extends State<LandingScreen> {
             const AppFooter(),
           ],
         ),
+      ),
       ),
     );
   }

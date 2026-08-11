@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/scroll_to_top.dart';
-import 'core/widgets/app_footer.dart';
+import 'core/widgets/widgets.dart';
 import 'features/shop/screens/landing_screen.dart';
 import 'features/vendor/screens/inventory_screen.dart';
 import 'features/vendor/screens/order_management_screen.dart';
@@ -80,7 +80,7 @@ class VendorShell extends StatelessWidget {
     };
 
     final content = Scaffold(
-      backgroundColor: AppColors.surfaceBackground,
+      backgroundColor: Colors.transparent,
       appBar: isDesktop
           ? null
           : AppBar(
@@ -114,57 +114,59 @@ class VendorShell extends StatelessWidget {
               onSelect: nav.setVendorSection,
             ),
           Expanded(
-            child: Column(
-              children: [
-                if (isDesktop)
-                  Container(
-                    height: 64,
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    decoration: const BoxDecoration(
-                      color: AppColors.surfaceLowest,
-                      border: Border(
-                        bottom: BorderSide(color: AppColors.borderSubtle),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        const Spacer(),
-                        TextButton.icon(
-                          onPressed: () => context
-                              .read<NavigationState>()
-                              .setMode(AppMode.shopper),
-                          icon: const Icon(Icons.storefront_outlined),
-                          label: const Text('Back to Storefront'),
+            child: ImigongoBackground(
+              child: Column(
+                children: [
+                  if (isDesktop)
+                    Container(
+                      height: 64,
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      decoration: const BoxDecoration(
+                        color: AppColors.surfaceLowest,
+                        border: Border(
+                          bottom: BorderSide(color: AppColors.borderSubtle),
                         ),
-                        const SizedBox(width: 8),
-                        const CircleAvatar(
-                          radius: 16,
-                          backgroundColor: AppColors.primaryOrange,
-                          child: Text(
-                            'JP',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
+                      ),
+                      child: Row(
+                        children: [
+                          const Spacer(),
+                          TextButton.icon(
+                            onPressed: () => context
+                                .read<NavigationState>()
+                                .setMode(AppMode.shopper),
+                            icon: const Icon(Icons.storefront_outlined),
+                            label: const Text('Back to Storefront'),
+                          ),
+                          const SizedBox(width: 8),
+                          const CircleAvatar(
+                            radius: 16,
+                            backgroundColor: AppColors.primaryOrange,
+                            child: Text(
+                              'JP',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Jean Paul K.',
-                          style: Theme.of(context).textTheme.titleSmall,
-                        ),
-                      ],
+                          const SizedBox(width: 8),
+                          Text(
+                            'Jean Paul K.',
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                  Expanded(
+                    child: KeyedSubtree(
+                      key: ValueKey(nav.vendorSection),
+                      child: body,
                     ),
                   ),
-                Expanded(
-                  child: KeyedSubtree(
-                    key: ValueKey(nav.vendorSection),
-                    child: body,
-                  ),
-                ),
-                const AppFooter(),
-              ],
+                  const AppFooter(),
+                ],
+              ),
             ),
           ),
         ],

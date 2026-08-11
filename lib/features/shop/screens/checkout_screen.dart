@@ -7,6 +7,7 @@ import '../../../core/constants/rwanda_locations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_format.dart';
+import '../../../core/widgets/widgets.dart';
 import '../../../state/cart_state.dart';
 import '../widgets/guest_tracking_modal.dart';
 
@@ -210,36 +211,38 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
 
     return Scaffold(
-      backgroundColor: AppColors.surfaceBackground,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('Checkout'),
       ),
-      body: isDesktop
-          ? Padding(
-              padding: const EdgeInsets.all(32),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      body: ImigongoBackground(
+        child: isDesktop
+            ? Padding(
+                padding: const EdgeInsets.all(32),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: SingleChildScrollView(child: form),
+                    ),
+                    const SizedBox(width: 32),
+                    SizedBox(width: 360, child: summary),
+                  ],
+                ),
+              )
+            : Column(
                 children: [
                   Expanded(
-                    flex: 3,
-                    child: SingleChildScrollView(child: form),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: form,
+                    ),
                   ),
-                  const SizedBox(width: 32),
-                  SizedBox(width: 360, child: summary),
+                  summary,
                 ],
               ),
-            )
-          : Column(
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: form,
-                  ),
-                ),
-                summary,
-              ],
-            ),
+      ),
     );
   }
 }

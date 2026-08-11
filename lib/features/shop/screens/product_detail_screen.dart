@@ -5,6 +5,7 @@ import '../../../core/mock_data/products_mock.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_format.dart';
+import '../../../core/widgets/widgets.dart';
 import '../../../state/cart_state.dart';
 import 'checkout_screen.dart';
 
@@ -298,7 +299,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
 
     return Scaffold(
-      backgroundColor: AppColors.surfaceBackground,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         leadingWidth: 140,
         leading: TextButton.icon(
@@ -329,28 +330,30 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(isDesktop ? 32 : 16),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1100),
-            child: isDesktop
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: gallery),
-                      const SizedBox(width: 40),
-                      Expanded(child: details),
-                    ],
-                  )
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      gallery,
-                      const SizedBox(height: 24),
-                      details,
-                    ],
-                  ),
+      body: ImigongoBackground(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.all(isDesktop ? 32 : 16),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1100),
+              child: isDesktop
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: gallery),
+                        const SizedBox(width: 40),
+                        Expanded(child: details),
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        gallery,
+                        const SizedBox(height: 24),
+                        details,
+                      ],
+                    ),
+            ),
           ),
         ),
       ),

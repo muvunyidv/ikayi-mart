@@ -6,6 +6,7 @@ abstract final class AppColors {
   static const Color primaryOrange = Color(0xFFFF5722);
   static const Color primaryContainer = Color(0xFFFF6600);
   static const Color primaryDeep = Color(0xFFA33E00);
+  static const Color primaryLight = Color(0xFFFFE8DE);
   static const Color onPrimary = Color(0xFFFFFFFF);
   static const Color onPrimaryContainer = Color(0xFF561D00);
   static const Color inversePrimary = Color(0xFFFFB596);
