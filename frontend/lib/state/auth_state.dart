@@ -42,10 +42,34 @@ class AuthState extends ChangeNotifier {
   }
 
   Future<bool> login({required String email, required String password}) async {
+    return _authenticate(
+      () => _api.login(email: email, password: password),
+    );
+  }
+
+  Future<bool> register({
+    required String email,
+    required String password,
+    required String name,
+    required String storeName,
+  }) async {
+    return _authenticate(
+      () => _api.registerVendor(
+        email: email,
+        password: password,
+        name: name,
+        storeName: storeName,
+      ),
+    );
+  }
+
+  Future<bool> _authenticate(
+    Future<({VendorUser user, String accessToken})> Function() request,
+  ) async {
     error = null;
     notifyListeners();
     try {
-      final result = await _api.login(email: email, password: password);
+      final result = await request();
       _api.setToken(result.accessToken);
       user = result.user;
       final prefs = await SharedPreferences.getInstance();

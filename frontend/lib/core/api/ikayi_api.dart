@@ -120,10 +120,31 @@ class IkayiApi {
     final data = await client.post('/auth/login', body: {
       'email': email,
       'password': password,
-    }) as Map<String, dynamic>;
-    final token = data['accessToken'] as String;
-    final user = VendorUser.fromJson(data['user'] as Map<String, dynamic>);
-    return (user: user, accessToken: token);
+    });
+    return _authResult(data);
+  }
+
+  Future<({VendorUser user, String accessToken})> registerVendor({
+    required String email,
+    required String password,
+    required String name,
+    required String storeName,
+  }) async {
+    final data = await client.post('/auth/register-vendor', body: {
+      'email': email,
+      'password': password,
+      'name': name,
+      'storeName': storeName,
+    });
+    return _authResult(data);
+  }
+
+  ({VendorUser user, String accessToken}) _authResult(dynamic data) {
+    final map = data as Map<String, dynamic>;
+    return (
+      user: VendorUser.fromJson(map['user'] as Map<String, dynamic>),
+      accessToken: map['accessToken'] as String,
+    );
   }
 
   Future<VendorUser> me() async {
