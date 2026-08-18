@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ikayi_mart/core/api/ikayi_api.dart';
 import 'package:ikayi_mart/main.dart';
@@ -21,5 +22,8 @@ void main() {
     await tester.pump();
 
     expect(find.textContaining('IKAYI MART'), findsWidgets);
+
+    // Unmount so the hero carousel auto-play timer is cancelled.
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 }

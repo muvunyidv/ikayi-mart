@@ -22,16 +22,61 @@ class ProductDetailScreen extends StatefulWidget {
 }
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
+  static const _recommendedBatchSize = 6;
+
   int _imageIndex = 0;
   final Map<String, String> _selectedVariants = {};
+  final _scrollController = ScrollController();
   Product? _product;
   bool _loading = true;
   String? _error;
+  int _recommendedShown = _recommendedBatchSize;
+  bool _loadingMore = false;
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients || _loadingMore) return;
+    final pos = _scrollController.position;
+    if (pos.pixels >= pos.maxScrollExtent - 280) {
+      _loadMoreRecommended();
+    }
+  }
+
+  void _loadMoreRecommended() {
+    final product = _product;
+    if (product == null || _loadingMore) return;
+    final poolLength = context
+        .read<CatalogState>()
+        .recommendedFor(product)
+        .length;
+    if (_recommendedShown >= poolLength) return;
+    _loadingMore = true;
+    setState(() {
+      final next = _recommendedShown + _recommendedBatchSize;
+      _recommendedShown = next > poolLength ? poolLength : next;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadingMore = false;
+      if (!mounted || !_scrollController.hasClients) return;
+      final pos = _scrollController.position;
+      if (pos.maxScrollExtent <= pos.pixels + 280) {
+        _loadMoreRecommended();
+      }
+    });
   }
 
   Future<void> _load() async {
@@ -43,7 +88,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       });
     }
     try {
-      final product = await context.read<IkayiApi>().getProduct(widget.productId);
+      final product = await context.read<IkayiApi>().getProduct(
+        widget.productId,
+      );
       if (!mounted) return;
       setState(() {
         _applyProduct(product);
@@ -87,10 +134,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
 
     final cart = context.watch<CartState>();
+    final catalog = context.watch<CatalogState>();
     final width = MediaQuery.sizeOf(context).width;
     final isDesktop = width >= kDesktopBreakpoint;
     final images = product.allImages;
-    final recommended = _recommendedProducts(product);
+    final moreFromVendor = catalog.moreFromVendor(product);
+    final recommendedPool = catalog.recommendedFor(product);
+    final recommended = recommendedPool.take(_recommendedShown).toList();
+    final hasMoreRecommended = _recommendedShown < recommendedPool.length;
 
     final gallery = Column(
       children: [
@@ -161,23 +212,20 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           child: Text(
             product.category.toUpperCase(),
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  fontSize: 11,
-                  color: AppColors.primaryDeep,
-                ),
+              fontSize: 11,
+              color: AppColors.primaryDeep,
+            ),
           ),
         ),
         const SizedBox(height: 12),
-        Text(
-          product.name,
-          style: Theme.of(context).textTheme.displayMedium,
-        ),
+        Text(product.name, style: Theme.of(context).textTheme.displayMedium),
         const SizedBox(height: 8),
         Text(
           formatRwf(product.priceRwf, suffix: true),
           style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                color: AppColors.primaryOrange,
-                fontSize: 28,
-              ),
+            color: AppColors.primaryOrange,
+            fontSize: 28,
+          ),
         ),
         const SizedBox(height: 16),
         ...product.variants.map((variant) {
@@ -206,7 +254,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         fontWeight: FontWeight.w600,
                       ),
                       onSelected: (_) {
-                        setState(() => _selectedVariants[variant.name] = option);
+                        setState(
+                          () => _selectedVariants[variant.name] = option,
+                        );
                       },
                     );
                   }).toList(),
@@ -215,10 +265,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ),
           );
         }),
-        _InfoCard(
-          title: 'DESCRIPTION',
-          body: product.description,
-        ),
+        _InfoCard(title: 'DESCRIPTION', body: product.description),
         const SizedBox(height: 12),
         _InfoCard(
           title: 'DELIVERY & WARRANTY',
@@ -247,95 +294,65 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final horizontal = constraints.maxWidth >= 480;
-            final buyNow = ElevatedButton(
-              onPressed: () {
-                context.read<CartState>().addProduct(
-                      product,
-                      selectedVariants: Map.of(_selectedVariants),
-                    );
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const CheckoutScreen()),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size.fromHeight(56),
-                padding: const EdgeInsets.symmetric(horizontal: 8),
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () {
+                  context.read<CartState>().addProduct(
+                    product,
+                    selectedVariants: Map.of(_selectedVariants),
+                  );
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const CheckoutScreen()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(56),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+                child: const FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text('BUY NOW'),
+                ),
               ),
-              child: const Text('BUY NOW'),
-            );
-            final addToCart = OutlinedButton(
-              onPressed: () {
-                context.read<CartState>().addProduct(
-                      product,
-                      selectedVariants: Map.of(_selectedVariants),
-                    );
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('${product.name} added to cart'),
-                    action: SnackBarAction(
-                      label: 'Checkout',
-                      textColor: Colors.white,
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const CheckoutScreen(),
-                          ),
-                        );
-                      },
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () {
+                  context.read<CartState>().addProduct(
+                    product,
+                    selectedVariants: Map.of(_selectedVariants),
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('${product.name} added to cart'),
+                      action: SnackBarAction(
+                        label: 'Checkout',
+                        textColor: Colors.white,
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const CheckoutScreen(),
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                );
-              },
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(56),
-                padding: const EdgeInsets.symmetric(horizontal: 8),
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(56),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+                child: const FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text('ADD TO CART'),
+                ),
               ),
-              child: const Text('ADD TO CART'),
-            );
-            final chat = OutlinedButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Chat to bargain opens soon (mock)'),
-                  ),
-                );
-              },
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(56),
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-              ),
-              child: const Text(
-                'CHAT TO BARGAIN',
-                textAlign: TextAlign.center,
-              ),
-            );
-
-            if (horizontal) {
-              return Row(
-                children: [
-                  Expanded(child: buyNow),
-                  const SizedBox(width: 12),
-                  Expanded(child: addToCart),
-                  const SizedBox(width: 12),
-                  Expanded(child: chat),
-                ],
-              );
-            }
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                buyNow,
-                const SizedBox(height: 12),
-                addToCart,
-                const SizedBox(height: 12),
-                chat,
-              ],
-            );
-          },
+            ),
+          ],
         ),
       ],
     );
@@ -369,9 +386,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 );
                 return;
               }
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const CheckoutScreen()),
-              );
+              Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const CheckoutScreen()));
             },
             icon: Badge(
               isLabelVisible: cart.itemCount > 0,
@@ -384,6 +401,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       ),
       body: ImigongoBackground(
         child: SingleChildScrollView(
+          controller: _scrollController,
           padding: EdgeInsets.all(isDesktop ? 32 : 16),
           child: Center(
             child: ConstrainedBox(
@@ -404,6 +422,32 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     gallery,
                     const SizedBox(height: 24),
                     details,
+                  ],
+                  if (moreFromVendor.isNotEmpty) ...[
+                    const SizedBox(height: 40),
+                    Text(
+                      'MORE FROM THIS VENDOR',
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      height: 280,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: moreFromVendor.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 12),
+                        itemBuilder: (context, index) {
+                          final item = moreFromVendor[index];
+                          return SizedBox(
+                            width: 180,
+                            child: ProductCard(
+                              product: item,
+                              onTap: () => _openProduct(item),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   ],
                   if (recommended.isNotEmpty) ...[
                     const SizedBox(height: 40),
@@ -427,31 +471,34 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           itemCount: recommended.length,
                           gridDelegate:
                               SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: cols,
-                            mainAxisSpacing: gap,
-                            crossAxisSpacing: gap,
-                            childAspectRatio: productCardAspectRatio(
-                              constraints.maxWidth,
-                            ),
-                          ),
+                                crossAxisCount: cols,
+                                mainAxisSpacing: gap,
+                                crossAxisSpacing: gap,
+                                childAspectRatio: productCardAspectRatio(
+                                  constraints.maxWidth,
+                                ),
+                              ),
                           itemBuilder: (context, index) {
                             final item = recommended[index];
                             return ProductCard(
                               product: item,
-                              onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => ProductDetailScreen(
-                                      productId: item.id,
-                                    ),
-                                  ),
-                                );
-                              },
+                              onTap: () => _openProduct(item),
                             );
                           },
                         );
                       },
                     ),
+                    if (hasMoreRecommended)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 20),
+                        child: Center(
+                          child: SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                      ),
                   ],
                 ],
               ),
@@ -462,24 +509,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  List<Product> _recommendedProducts(Product product) {
-    final catalog = context.read<CatalogState>();
-    final sameCategory = catalog
-        .byCategory(product.category)
-        .where((p) => p.id != product.id)
-        .toList();
-    if (sameCategory.length >= 3) {
-      return sameCategory.take(3).toList();
-    }
-
-    final extras = catalog.products
-        .where(
-          (p) =>
-              p.id != product.id &&
-              !sameCategory.any((s) => s.id == p.id),
-        )
-        .toList();
-    return [...sameCategory, ...extras].take(3).toList();
+  void _openProduct(Product item) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ProductDetailScreen(productId: item.id),
+      ),
+    );
   }
 }
 

@@ -25,6 +25,29 @@ class CatalogState extends ChangeNotifier {
     return products.where((p) => p.category == category).toList();
   }
 
+  /// In-stock products from the same vendor, excluding [product].
+  List<Product> moreFromVendor(Product product) {
+    return products
+        .where(
+          (p) =>
+              p.vendorName == product.vendorName &&
+              p.id != product.id &&
+              p.inStock,
+        )
+        .toList();
+  }
+
+  /// Recommended pool: same category first, then the rest of the catalog.
+  List<Product> recommendedFor(Product product) {
+    final sameCategory = byCategory(
+      product.category,
+    ).where((p) => p.id != product.id).toList();
+    final rest = products
+        .where((p) => p.id != product.id && p.category != product.category)
+        .toList();
+    return [...sameCategory, ...rest];
+  }
+
   Future<void> load() async {
     loading = true;
     error = null;

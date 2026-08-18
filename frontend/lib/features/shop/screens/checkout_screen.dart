@@ -54,10 +54,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   String get _apiPaymentMethod => switch (_payment) {
-        _PaymentMethod.mtnMomo => 'MTN_MOMO',
-        _PaymentMethod.airtelMoney => 'AIRTEL_MONEY',
-        _PaymentMethod.visaCard => 'VISA_CARD',
-      };
+    _PaymentMethod.mtnMomo => 'MTN_MOMO',
+    _PaymentMethod.airtelMoney => 'AIRTEL_MONEY',
+    _PaymentMethod.visaCard => 'VISA_CARD',
+  };
 
   Future<void> _placeOrder(CartState cart) async {
     if (!_formKey.currentState!.validate()) return;
@@ -113,9 +113,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _placing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -151,113 +151,129 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     final form = Form(
       key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'CHECKOUT — Step 2 of 2',
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Guest checkout — no account needed',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.secondary,
-                ),
-          ),
-          const SizedBox(height: 24),
-          TextFormField(
-            controller: _nameController,
-            decoration: const InputDecoration(labelText: 'Full Name'),
-            validator: (v) =>
-                (v == null || v.trim().isEmpty) ? 'Required' : null,
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _phoneController,
-            keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(
-              labelText: 'Phone Number',
-              hintText: '+250 7XX XXX XXX',
-              helperText: 'Required for MoMo & SMS guest tracking',
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceLowest,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.outlineVariant, width: 1.5),
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.cardShadow,
+              blurRadius: 16,
+              offset: Offset(0, 4),
             ),
-            validator: (v) {
-              if (v == null || v.trim().isEmpty) return 'Phone is required';
-              if (v.replaceAll(RegExp(r'\D'), '').length < 10) {
-                return 'Enter a valid Rwanda phone number';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            key: ValueKey('district-$_district'),
-            initialValue: _district,
-            decoration: const InputDecoration(labelText: 'District'),
-            items: RwandaLocations.districtNames
-                .map((d) => DropdownMenuItem(value: d, child: Text(d)))
-                .toList(),
-            onChanged: (v) {
-              setState(() {
-                _district = v;
-                _sector = null;
-              });
-            },
-            validator: (v) => v == null ? 'Select a district' : null,
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            key: ValueKey('sector-$_district-$_sector'),
-            initialValue: sectors.contains(_sector) ? _sector : null,
-            decoration: const InputDecoration(labelText: 'Sector'),
-            items: sectors
-                .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                .toList(),
-            onChanged: _district == null
-                ? null
-                : (v) => setState(() => _sector = v),
-            validator: (v) => v == null ? 'Select a sector' : null,
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _landmarkController,
-            decoration: const InputDecoration(
-              labelText: 'Landmark / Street',
-              hintText: 'e.g. Near MTN Centre, Remera',
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'CHECKOUT — Step 2 of 2',
+              style: Theme.of(context).textTheme.headlineMedium,
             ),
-            validator: (v) =>
-                (v == null || v.trim().isEmpty) ? 'Required' : null,
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Payment method',
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
-          const SizedBox(height: 12),
-          _PaymentTile(
-            title: 'MTN Mobile Money (MoMo)',
-            subtitle: 'Pay with your MTN MoMo wallet',
-            icon: Icons.phone_android,
-            selected: _payment == _PaymentMethod.mtnMomo,
-            onTap: () => setState(() => _payment = _PaymentMethod.mtnMomo),
-          ),
-          const SizedBox(height: 8),
-          _PaymentTile(
-            title: 'Airtel Money',
-            subtitle: 'Pay with Airtel Money',
-            icon: Icons.smartphone,
-            selected: _payment == _PaymentMethod.airtelMoney,
-            onTap: () => setState(() => _payment = _PaymentMethod.airtelMoney),
-          ),
-          const SizedBox(height: 8),
-          _PaymentTile(
-            title: 'Visa / Bank Card',
-            subtitle: 'Debit or credit card',
-            icon: Icons.credit_card,
-            selected: _payment == _PaymentMethod.visaCard,
-            onTap: () => setState(() => _payment = _PaymentMethod.visaCard),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              'Guest checkout — no account needed',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: AppColors.secondary),
+            ),
+            const SizedBox(height: 24),
+            TextFormField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: 'Full Name'),
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Required' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(
+                labelText: 'Phone Number',
+                hintText: '+250 7XX XXX XXX',
+                helperText: 'Required for MoMo & SMS guest tracking',
+              ),
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'Phone is required';
+                if (v.replaceAll(RegExp(r'\D'), '').length < 10) {
+                  return 'Enter a valid Rwanda phone number';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              key: ValueKey('district-$_district'),
+              initialValue: _district,
+              decoration: const InputDecoration(labelText: 'District'),
+              items: RwandaLocations.districtNames
+                  .map((d) => DropdownMenuItem(value: d, child: Text(d)))
+                  .toList(),
+              onChanged: (v) {
+                setState(() {
+                  _district = v;
+                  _sector = null;
+                });
+              },
+              validator: (v) => v == null ? 'Select a district' : null,
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              key: ValueKey('sector-$_district-$_sector'),
+              initialValue: sectors.contains(_sector) ? _sector : null,
+              decoration: const InputDecoration(labelText: 'Sector'),
+              items: sectors
+                  .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                  .toList(),
+              onChanged: _district == null
+                  ? null
+                  : (v) => setState(() => _sector = v),
+              validator: (v) => v == null ? 'Select a sector' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _landmarkController,
+              decoration: const InputDecoration(
+                labelText: 'Landmark / Street',
+                hintText: 'e.g. Near MTN Centre, Remera',
+              ),
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Required' : null,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Payment method',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 12),
+            _PaymentTile(
+              title: 'MTN Mobile Money (MoMo)',
+              subtitle: 'Pay with your MTN MoMo wallet',
+              icon: Icons.phone_android,
+              selected: _payment == _PaymentMethod.mtnMomo,
+              onTap: () => setState(() => _payment = _PaymentMethod.mtnMomo),
+            ),
+            const SizedBox(height: 8),
+            _PaymentTile(
+              title: 'Airtel Money',
+              subtitle: 'Pay with Airtel Money',
+              icon: Icons.smartphone,
+              selected: _payment == _PaymentMethod.airtelMoney,
+              onTap: () =>
+                  setState(() => _payment = _PaymentMethod.airtelMoney),
+            ),
+            const SizedBox(height: 8),
+            _PaymentTile(
+              title: 'Visa / Bank Card',
+              subtitle: 'Debit or credit card',
+              icon: Icons.credit_card,
+              selected: _payment == _PaymentMethod.visaCard,
+              onTap: () => setState(() => _payment = _PaymentMethod.visaCard),
+            ),
+          ],
+        ),
       ),
     );
 
@@ -269,9 +285,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        title: const Text('Checkout'),
-      ),
+      appBar: AppBar(title: const Text('Checkout')),
       body: ImigongoBackground(
         child: isDesktop
             ? Padding(
@@ -342,9 +356,7 @@ class _PaymentTile extends StatelessWidget {
             children: [
               Icon(
                 icon,
-                color: selected
-                    ? AppColors.primaryOrange
-                    : AppColors.secondary,
+                color: selected ? AppColors.primaryOrange : AppColors.secondary,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -355,18 +367,16 @@ class _PaymentTile extends StatelessWidget {
                     Text(
                       subtitle,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.secondary,
-                            fontSize: 12,
-                          ),
+                        color: AppColors.secondary,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
               ),
               Icon(
                 selected ? Icons.radio_button_checked : Icons.radio_button_off,
-                color: selected
-                    ? AppColors.primaryOrange
-                    : AppColors.secondary,
+                color: selected ? AppColors.primaryOrange : AppColors.secondary,
               ),
             ],
           ),
@@ -441,8 +451,8 @@ class _OrderSummary extends StatelessWidget {
                   Text(
                     formatRwf(cart.grandTotalRwf, suffix: true),
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: AppColors.primaryOrange,
-                        ),
+                      color: AppColors.primaryOrange,
+                    ),
                   ),
                 ],
               ),

@@ -1,8 +1,5 @@
 class ProductVariant {
-  const ProductVariant({
-    required this.name,
-    required this.options,
-  });
+  const ProductVariant({required this.name, required this.options});
 
   final String name;
   final List<String> options;
@@ -57,6 +54,16 @@ class Product {
   bool get isLowStock => stock > 0 && stock <= 5;
   bool get inStock => stock > 0;
 
+  /// Live search match against name, category, description, and vendor.
+  bool matchesQuery(String query) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return true;
+    return name.toLowerCase().contains(q) ||
+        category.toLowerCase().contains(q) ||
+        description.toLowerCase().contains(q) ||
+        vendorName.toLowerCase().contains(q);
+  }
+
   List<String> get allImages =>
       gallery.isEmpty ? [imageUrl] : [imageUrl, ...gallery];
 
@@ -79,9 +86,11 @@ class Product {
           .map((e) => ProductVariant.fromJson(e as Map<String, dynamic>))
           .toList(),
       isActive: json['isActive'] as bool? ?? true,
-      deliveryNote: json['deliveryNote'] as String? ??
+      deliveryNote:
+          json['deliveryNote'] as String? ??
           'Fast Kigali delivery — most orders arrive within 60 minutes in Gasabo, Kicukiro & Nyarugenge.',
-      warrantyNote: json['warrantyNote'] as String? ??
+      warrantyNote:
+          json['warrantyNote'] as String? ??
           'Seller-backed warranty. Chat support available for returns & exchanges.',
     );
   }
@@ -124,22 +133,22 @@ enum OrderStatus {
 
 extension OrderStatusLabel on OrderStatus {
   String get label => switch (this) {
-        OrderStatus.pending => 'Pending',
-        OrderStatus.processing => 'Processing',
-        OrderStatus.shipped => 'Shipped',
-        OrderStatus.delivered => 'Delivered',
-        OrderStatus.issueReported => 'Issue Reported',
-        OrderStatus.cancelled => 'Cancelled',
-      };
+    OrderStatus.pending => 'Pending',
+    OrderStatus.processing => 'Processing',
+    OrderStatus.shipped => 'Shipped',
+    OrderStatus.delivered => 'Delivered',
+    OrderStatus.issueReported => 'Issue Reported',
+    OrderStatus.cancelled => 'Cancelled',
+  };
 
   String get apiValue => switch (this) {
-        OrderStatus.pending => 'PENDING',
-        OrderStatus.processing => 'PROCESSING',
-        OrderStatus.shipped => 'SHIPPED',
-        OrderStatus.delivered => 'DELIVERED',
-        OrderStatus.issueReported => 'ISSUE_REPORTED',
-        OrderStatus.cancelled => 'CANCELLED',
-      };
+    OrderStatus.pending => 'PENDING',
+    OrderStatus.processing => 'PROCESSING',
+    OrderStatus.shipped => 'SHIPPED',
+    OrderStatus.delivered => 'DELIVERED',
+    OrderStatus.issueReported => 'ISSUE_REPORTED',
+    OrderStatus.cancelled => 'CANCELLED',
+  };
 
   static OrderStatus fromApi(String? value) {
     return switch (value) {
@@ -210,8 +219,7 @@ class CustomerOrder {
   final String? supportTicketId;
   final int? totalAmountRwf;
 
-  int get itemsTotalRwf =>
-      items.fold(0, (sum, item) => sum + item.totalRwf);
+  int get itemsTotalRwf => items.fold(0, (sum, item) => sum + item.totalRwf);
 
   int get grandTotalRwf => totalAmountRwf ?? itemsTotalRwf + deliveryFeeRwf;
 
@@ -243,7 +251,8 @@ class CustomerOrder {
           .toList(),
       deliveryFeeRwf: (json['deliveryFeeRwf'] as num?)?.toInt() ?? 2000,
       status: OrderStatusLabel.fromApi(json['status'] as String?),
-      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+      createdAt:
+          DateTime.tryParse(json['createdAt'] as String? ?? '') ??
           DateTime.now(),
       paymentMethod: _paymentLabel(json['paymentMethod'] as String?),
       supportTicket: ticketIssue,
@@ -289,7 +298,9 @@ class VendorUser {
       return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
     }
     final n = name.trim();
-    return n.isEmpty ? 'V' : n.substring(0, n.length >= 2 ? 2 : 1).toUpperCase();
+    return n.isEmpty
+        ? 'V'
+        : n.substring(0, n.length >= 2 ? 2 : 1).toUpperCase();
   }
 
   String get storeInitials {
@@ -298,7 +309,9 @@ class VendorUser {
     if (parts.length >= 2) {
       return '${parts.first[0]}${parts[1][0]}'.toUpperCase();
     }
-    return n.isEmpty ? 'VS' : n.substring(0, n.length >= 2 ? 2 : 1).toUpperCase();
+    return n.isEmpty
+        ? 'VS'
+        : n.substring(0, n.length >= 2 ? 2 : 1).toUpperCase();
   }
 
   factory VendorUser.fromJson(Map<String, dynamic> json) {
@@ -308,15 +321,21 @@ class VendorUser {
       email: json['email'] as String,
       name: json['name'] as String,
       role: json['role'] as String? ?? 'VENDOR',
-      vendorId: json['vendorId'] as String? ??
+      vendorId:
+          json['vendorId'] as String? ??
           (vendor is Map<String, dynamic> ? vendor['id'] as String? : null),
-      storeName: json['storeName'] as String? ??
+      storeName:
+          json['storeName'] as String? ??
           (vendor is Map<String, dynamic>
               ? vendor['storeName'] as String?
               : null),
-      isVerified: json['isVerified'] as bool? ??
-          (vendor is Map<String, dynamic> ? vendor['isVerified'] as bool? : null),
-      isOnline: json['isOnline'] as bool? ??
+      isVerified:
+          json['isVerified'] as bool? ??
+          (vendor is Map<String, dynamic>
+              ? vendor['isVerified'] as bool?
+              : null),
+      isOnline:
+          json['isOnline'] as bool? ??
           (vendor is Map<String, dynamic> ? vendor['isOnline'] as bool? : null),
     );
   }

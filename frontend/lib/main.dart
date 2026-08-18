@@ -23,13 +23,7 @@ Future<void> main() async {
   final auth = AuthState(api);
   final catalog = CatalogState(api);
   await auth.restore();
-  runApp(
-    IkayiMartApp(
-      api: api,
-      auth: auth,
-      catalog: catalog,
-    ),
-  );
+  runApp(IkayiMartApp(api: api, auth: auth, catalog: catalog));
 }
 
 class IkayiMartApp extends StatelessWidget {
@@ -86,9 +80,7 @@ class VendorShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthState>();
     if (auth.restoring) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     if (!auth.isLoggedIn) {
       return const VendorLoginScreen();
@@ -104,15 +96,15 @@ class VendorShell extends StatelessWidget {
       VendorSection.inventory => const InventoryScreen(),
       VendorSection.orders => const OrderManagementScreen(),
       VendorSection.bmsSync => const _PlaceholderSection(
-          title: 'BMS Sync',
-          message:
-              'SKU sync with your Business Management System is connected (mock).',
-        ),
+        title: 'BMS Sync',
+        message:
+            'SKU sync with your Business Management System is connected (mock).',
+      ),
       VendorSection.support => const _PlaceholderSection(
-          title: 'Support',
-          message:
-              'Guest support tickets appear under Order Management → Issue Reported.',
-        ),
+        title: 'Support',
+        message:
+            'Guest support tickets appear under Order Management → Issue Reported.',
+      ),
     };
 
     return Scaffold(
@@ -148,6 +140,8 @@ class VendorShell extends StatelessWidget {
             VendorSidebar(
               selected: nav.vendorSection,
               onSelect: nav.setVendorSection,
+              compact: nav.vendorSidebarCollapsed,
+              onToggleCollapse: nav.toggleVendorSidebar,
             ),
           Expanded(
             child: ImigongoBackground(
@@ -177,9 +171,9 @@ class VendorShell extends StatelessWidget {
                             onPressed: () async {
                               await context.read<AuthState>().logout();
                               if (context.mounted) {
-                                context
-                                    .read<NavigationState>()
-                                    .setMode(AppMode.shopper);
+                                context.read<NavigationState>().setMode(
+                                  AppMode.shopper,
+                                );
                               }
                             },
                             child: const Text('Log out'),
@@ -223,10 +217,7 @@ class VendorShell extends StatelessWidget {
 }
 
 class _PlaceholderSection extends StatelessWidget {
-  const _PlaceholderSection({
-    required this.title,
-    required this.message,
-  });
+  const _PlaceholderSection({required this.title, required this.message});
 
   final String title;
   final String message;
@@ -253,9 +244,9 @@ class _PlaceholderSection extends StatelessWidget {
                 Text(
                   message,
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.secondary,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: AppColors.secondary),
                 ),
               ],
             ),

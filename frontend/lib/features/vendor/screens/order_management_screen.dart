@@ -269,18 +269,18 @@ class _OrderManagementScreenState extends State<OrderManagementScreen> {
                                       DropdownButton<OrderStatus>(
                                         value: order.status,
                                         underline: const SizedBox.shrink(),
-                                        items: OrderStatus.values
-                                            .where(
-                                              (s) =>
-                                                  s != OrderStatus.cancelled,
-                                            )
-                                            .map(
-                                              (s) => DropdownMenuItem(
+                                        items: [
+                                          for (final s in OrderStatus.values)
+                                            if (s != OrderStatus.cancelled ||
+                                                order.status ==
+                                                    OrderStatus.cancelled)
+                                              DropdownMenuItem(
                                                 value: s,
+                                                enabled:
+                                                    s != OrderStatus.cancelled,
                                                 child: Text(s.label),
                                               ),
-                                            )
-                                            .toList(),
+                                        ],
                                         onChanged: (status) {
                                           if (status == null) return;
                                           _setStatus(order, status);

@@ -8,6 +8,10 @@ const double kDesktopBreakpoint = 900;
 const double kTabletBreakpoint = 600;
 const double kPhoneBreakpoint = 400;
 
+/// Shopper & vendor navigation sidebar widths.
+const double kSidebarExpandedWidth = 240;
+const double kSidebarCollapsedWidth = 72;
+
 /// Marketplace / product-card grid columns for [width].
 ///
 /// Caps at [max] so short lists (e.g. recommended) never force empty columns.
@@ -16,10 +20,10 @@ int productCrossAxisCount(double width, {int max = 4}) {
   final count = width >= kDesktopBreakpoint
       ? 4
       : width >= kTabletBreakpoint
-          ? 3
-          : width >= 340
-              ? 2
-              : 1;
+      ? 3
+      : width >= 340
+      ? 2
+      : 1;
   return count.clamp(1, max);
 }
 
@@ -179,10 +183,7 @@ abstract final class AppTheme {
           horizontal: 16,
           vertical: 14,
         ),
-        hintStyle: GoogleFonts.inter(
-          color: AppColors.secondary,
-          fontSize: 14,
-        ),
+        hintStyle: GoogleFonts.inter(color: AppColors.secondary, fontSize: 14),
       ),
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.surfaceHigh,
@@ -198,9 +199,7 @@ abstract final class AppTheme {
           color: AppColors.onPrimary,
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         side: BorderSide.none,
       ),
       dividerTheme: const DividerThemeData(

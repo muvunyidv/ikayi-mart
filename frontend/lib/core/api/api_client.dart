@@ -6,12 +6,18 @@ import 'api_config.dart';
 import 'api_exception.dart';
 
 class ApiClient {
-  ApiClient({http.Client? httpClient, String? baseUrl})
+  ApiClient({http.Client? httpClient, String? baseUrl, String? socketOrigin})
       : _http = httpClient ?? http.Client(),
-        baseUrl = baseUrl ?? resolveApiBaseUrl();
+        baseUrl = baseUrl ?? resolveApiBaseUrl(),
+        socketOrigin = socketOrigin ?? resolveSocketOrigin();
 
   final http.Client _http;
+
+  /// REST base (`…/api/v1`). Auth, products, orders, and vendor dashboard.
   final String baseUrl;
+
+  /// Socket.io origin (no `/api/v1`). Use for `/orders` namespace connections.
+  final String socketOrigin;
   String? token;
 
   Map<String, String> _headers({bool jsonBody = false}) {
