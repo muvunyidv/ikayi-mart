@@ -3,46 +3,95 @@ import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
-async function main() {
-  await prisma.payment.deleteMany();
-  await prisma.supportTicket.deleteMany();
-  await prisma.orderLineItem.deleteMany();
-  await prisma.customerOrder.deleteMany();
-  await prisma.productVariant.deleteMany();
-  await prisma.product.deleteMany();
-  await prisma.vendor.deleteMany();
-  await prisma.user.deleteMany();
+/** Matches `AuthService` (`bcrypt.hash(..., 12)`). */
+const BCRYPT_ROUNDS = 12;
 
-  const password = await bcrypt.hash('VendorPass123!', 12);
-  const adminPassword = await bcrypt.hash('AdminPass123!', 12);
+const TEST_VENDOR_EMAIL = 'vendor@ikayi.app';
+const TEST_VENDOR_PASSWORD = 'vendor123456';
+const TEST_STORE_NAME = 'IKAYI Test Store';
 
-  await prisma.user.create({
-    data: {
+async function upsertVendorAccount(params: {
+  email: string;
+  password: string;
+  name: string;
+  storeName: string;
+  isVerified?: boolean;
+}) {
+  const passwordHash = await bcrypt.hash(params.password, BCRYPT_ROUNDS);
+
+  const user = await prisma.user.upsert({
+    where: { email: params.email },
+    update: {
+      password: passwordHash,
+      name: params.name,
+      role: UserRole.VENDOR,
+    },
+    create: {
+      email: params.email,
+      password: passwordHash,
+      name: params.name,
+      role: UserRole.VENDOR,
+    },
+  });
+
+  await prisma.vendor.upsert({
+    where: { userId: user.id },
+    update: {
+      storeName: params.storeName,
+      isVerified: params.isVerified ?? true,
+      isOnline: true,
+    },
+    create: {
+      userId: user.id,
+      storeName: params.storeName,
+      isVerified: params.isVerified ?? true,
+      isOnline: true,
+    },
+  });
+
+  return user;
+}
+
+async function upsertAdminAccount() {
+  const passwordHash = await bcrypt.hash('AdminPass123!', BCRYPT_ROUNDS);
+
+  await prisma.user.upsert({
+    where: { email: 'admin@ikayi.rw' },
+    update: {
+      password: passwordHash,
+      name: 'IKAYI Admin',
+      role: UserRole.ADMIN,
+    },
+    create: {
       email: 'admin@ikayi.rw',
-      password: adminPassword,
+      password: passwordHash,
       name: 'IKAYI Admin',
       role: UserRole.ADMIN,
     },
   });
+}
 
-  await prisma.user.create({
-    data: {
-      email: 'jean.paul@kigalitech.rw',
-      password,
-      name: 'Jean Paul K.',
-      role: UserRole.VENDOR,
-      vendor: {
-        create: {
-          storeName: 'Kigali Tech Store',
-          isVerified: true,
-          isOnline: true,
-        },
-      },
-    },
+async function main() {
+  await upsertAdminAccount();
+
+  await upsertVendorAccount({
+    email: TEST_VENDOR_EMAIL,
+    password: TEST_VENDOR_PASSWORD,
+    name: 'IKAYI Test Vendor',
+    storeName: TEST_STORE_NAME,
+    isVerified: true,
   });
 
-  console.log('Seeded empty IKAYI MART database (accounts only).');
-  console.log('Vendor login: jean.paul@kigalitech.rw / VendorPass123!');
+  await upsertVendorAccount({
+    email: 'jean.paul@kigalitech.rw',
+    password: 'VendorPass123!',
+    name: 'Jean Paul K.',
+    storeName: 'Kigali Tech Store',
+    isVerified: true,
+  });
+
+  console.log('Seed complete (idempotent upserts, no data wiped).');
+  console.log(`Vendor login: ${TEST_VENDOR_EMAIL} / ${TEST_VENDOR_PASSWORD}`);
   console.log('Admin login:  admin@ikayi.rw / AdminPass123!');
 }
 
