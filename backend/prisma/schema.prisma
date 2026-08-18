@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  VENDOR
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  ISSUE_REPORTED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  MTN_MOMO
+  AIRTEL_MONEY
+  VISA_CARD
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESSFUL
+  FAILED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      UserRole @default(VENDOR)
+  vendor    Vendor?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Vendor {
+  id         String          @id @default(uuid())
+  userId     String          @unique
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storeName  String
+  isVerified Boolean         @default(false)
+  isOnline   Boolean         @default(true)
+  products   Product[]
+  orders     OrderLineItem[]
+  createdAt  DateTime        @default(now())
+
+  @@index([storeName])
+}
+
+model Product {
+  id          String           @id @default(uuid())
+  vendorId    String
+  vendor      Vendor           @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  slug        String           @unique
+  name        String
+  category    String
+  priceRwf    Int
+  stock       Int              @default(0)
+  imageUrl    String
+  description String
+  badge       String?
+  originLabel String?
+  gallery     String[]         @default([])
+  isActive    Boolean          @default(true)
+  variants    ProductVariant[]
+  orderItems  OrderLineItem[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([vendorId])
+  @@index([category])
+  @@index([isActive])
+  @@index([name])
+}
+
+model ProductVariant {
+  id        String   @id @default(uuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String
+  options   String[]
+}
+
+model CustomerOrder {
+  id             String          @id @default(uuid())
+  trackingCode   String          @unique
+  guestName      String
+  phone          String
+  district       String
+  sector         String
+  landmark       String
+  deliveryFeeRwf Int             @default(2000)
+  totalAmountRwf Int
+  status         OrderStatus     @default(PENDING)
+  paymentMethod  PaymentMethod   @default(MTN_MOMO)
+  paymentStatus  PaymentStatus   @default(PENDING)
+  items          OrderLineItem[]
+  supportTicket  SupportTicket?
+  payments       Payment[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([phone])
+  @@index([createdAt])
+}
+
+model OrderLineItem {
+  id               String        @id @default(uuid())
+  orderId          String
+  order            CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId        String
+  product          Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  vendorId         String
+  vendor           Vendor        @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  quantity         Int           @default(1)
+  unitPriceRwf     Int
+  selectedVariants Json?
+
+  @@index([orderId])
+  @@index([vendorId])
+  @@index([productId])
+}
+
+model SupportTicket {
+  id         String        @id @default(uuid())
+  orderId    String        @unique
+  order      CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  issue      String
+  resolution String?
+  isResolved Boolean       @default(false)
+  createdAt  DateTime      @default(now())
+}
+
+model Payment {
+  id          String         @id @default(uuid())
+  orderId     String
+  order       CustomerOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  method      PaymentMethod
+  status      PaymentStatus  @default(PENDING)
+  amountRwf   Int
+  phone       String?
+  providerRef String?        @unique
+  metadata    Json?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([orderId])
+  @@index([status])
+}

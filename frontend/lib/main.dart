@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'core/api/ikayi_api.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/scroll_to_top.dart';
@@ -9,22 +10,47 @@ import 'features/shop/screens/landing_screen.dart';
 import 'features/vendor/screens/inventory_screen.dart';
 import 'features/vendor/screens/order_management_screen.dart';
 import 'features/vendor/screens/vendor_dashboard_screen.dart';
+import 'features/vendor/screens/vendor_login_screen.dart';
 import 'features/vendor/widgets/vendor_sidebar.dart';
+import 'state/auth_state.dart';
 import 'state/cart_state.dart';
+import 'state/catalog_state.dart';
 import 'state/navigation_state.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const IkayiMartApp());
+  final api = IkayiApi();
+  final auth = AuthState(api);
+  final catalog = CatalogState(api);
+  await auth.restore();
+  runApp(
+    IkayiMartApp(
+      api: api,
+      auth: auth,
+      catalog: catalog,
+    ),
+  );
 }
 
 class IkayiMartApp extends StatelessWidget {
-  const IkayiMartApp({super.key});
+  const IkayiMartApp({
+    super.key,
+    required this.api,
+    required this.auth,
+    required this.catalog,
+  });
+
+  final IkayiApi api;
+  final AuthState auth;
+  final CatalogState catalog;
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        Provider<IkayiApi>.value(value: api),
+        ChangeNotifierProvider<AuthState>.value(value: auth),
+        ChangeNotifierProvider<CatalogState>.value(value: catalog),
         ChangeNotifierProvider(create: (_) => CartState()),
         ChangeNotifierProvider(create: (_) => NavigationState()),
       ],
@@ -46,7 +72,6 @@ class AppShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final nav = context.watch<NavigationState>();
-    // Remount on mode switch so scroll position always starts at top.
     if (nav.mode == AppMode.shopper) {
       return const LandingScreen(key: ValueKey('mode-shopper'));
     }
@@ -59,7 +84,18 @@ class VendorShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthState>();
+    if (auth.restoring) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (!auth.isLoggedIn) {
+      return const VendorLoginScreen();
+    }
+
     final nav = context.watch<NavigationState>();
+    final user = auth.user!;
     final width = MediaQuery.sizeOf(context).width;
     final isDesktop = width >= kDesktopBreakpoint;
 
@@ -79,7 +115,7 @@ class VendorShell extends StatelessWidget {
         ),
     };
 
-    final content = Scaffold(
+    return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: isDesktop
           ? null
@@ -137,13 +173,24 @@ class VendorShell extends StatelessWidget {
                             icon: const Icon(Icons.storefront_outlined),
                             label: const Text('Back to Storefront'),
                           ),
+                          TextButton(
+                            onPressed: () async {
+                              await context.read<AuthState>().logout();
+                              if (context.mounted) {
+                                context
+                                    .read<NavigationState>()
+                                    .setMode(AppMode.shopper);
+                              }
+                            },
+                            child: const Text('Log out'),
+                          ),
                           const SizedBox(width: 8),
-                          const CircleAvatar(
+                          CircleAvatar(
                             radius: 16,
                             backgroundColor: AppColors.primaryOrange,
                             child: Text(
-                              'JP',
-                              style: TextStyle(
+                              user.initials,
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
@@ -152,7 +199,7 @@ class VendorShell extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'Jean Paul K.',
+                            user.name,
                             style: Theme.of(context).textTheme.titleSmall,
                           ),
                         ],
@@ -172,8 +219,6 @@ class VendorShell extends StatelessWidget {
         ],
       ),
     );
-
-    return content;
   }
 }
 

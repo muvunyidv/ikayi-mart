@@ -1,19 +1,81 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import '../../../core/mock_data/orders_mock.dart';
-import '../../../core/mock_data/products_mock.dart';
+import '../../../core/api/ikayi_api.dart';
+import '../../../core/models/models.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_format.dart';
 
-class VendorDashboardScreen extends StatelessWidget {
+class VendorDashboardScreen extends StatefulWidget {
   const VendorDashboardScreen({super.key});
 
   @override
+  State<VendorDashboardScreen> createState() => _VendorDashboardScreenState();
+}
+
+class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
+  bool _loading = true;
+  String? _error;
+  VendorKpis? _kpis;
+  VendorChart? _chart;
+  List<Product> _products = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    final api = context.read<IkayiApi>();
+    try {
+      final kpis = await api.vendorKpis();
+      final chart = await api.vendorChart();
+      final products = await api.listMyProducts();
+      if (!mounted) return;
+      setState(() {
+        _kpis = kpis;
+        _chart = chart;
+        _products = products;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final lowStock = ProductsMock.products.where((p) => p.isLowStock).length;
-    final maxRevenue = OrdersMock.weeklyRevenueRwf.reduce(
-      (a, b) => a > b ? a : b,
-    );
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_error != null || _kpis == null || _chart == null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_error ?? 'Could not load dashboard', textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            ElevatedButton(onPressed: _load, child: const Text('Retry')),
+          ],
+        ),
+      );
+    }
+
+    final kpis = _kpis!;
+    final chart = _chart!;
+    final lowStock = _products.where((p) => p.isLowStock).toList();
+    final maxRevenue = chart.values.isEmpty
+        ? 1
+        : chart.values.reduce((a, b) => a > b ? a : b);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -76,25 +138,25 @@ class VendorDashboardScreen extends StatelessWidget {
                 children: [
                   _KpiCard(
                     title: "Today's Revenue (RWF)",
-                    value: formatRwf(OrdersMock.todayRevenueRwf),
-                    badge: '+12.5%',
+                    value: formatRwf(kpis.todayRevenueRwf),
+                    badge: 'Today',
                     badgeColor: AppColors.tertiary,
                   ),
                   _KpiCard(
                     title: 'Pending Orders',
-                    value: '${OrdersMock.pendingCount}',
+                    value: '${kpis.pendingOrders}',
                     badge: 'Urgent',
                     badgeColor: AppColors.error,
                   ),
                   _KpiCard(
                     title: 'Low Stock Items',
-                    value: '$lowStock',
+                    value: '${kpis.lowStockItems}',
                     badge: 'Critical',
                     badgeColor: AppColors.error,
                   ),
                   _KpiCard(
                     title: 'Completed Orders',
-                    value: '${OrdersMock.completedCount}',
+                    value: '${kpis.completedOrders}',
                     badge: 'This Week',
                     badgeColor: AppColors.secondary,
                   ),
@@ -148,8 +210,10 @@ class VendorDashboardScreen extends StatelessWidget {
                   height: 180,
                   child: CustomPaint(
                     painter: _RevenueChartPainter(
-                      values: OrdersMock.weeklyRevenueRwf,
-                      maxValue: maxRevenue.toDouble(),
+                      values: chart.values.length < 2
+                          ? const [0, 0]
+                          : chart.values,
+                      maxValue: maxRevenue.toDouble().clamp(1, double.infinity),
                     ),
                     child: const SizedBox.expand(),
                   ),
@@ -157,7 +221,9 @@ class VendorDashboardScreen extends StatelessWidget {
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: OrdersMock.weekLabels
+                  children: (chart.labels.isEmpty
+                          ? const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+                          : chart.labels)
                       .map(
                         (d) => Text(
                           d,
@@ -174,8 +240,11 @@ class VendorDashboardScreen extends StatelessWidget {
           LayoutBuilder(
             builder: (context, constraints) {
               final stack = constraints.maxWidth < 800;
-              final alerts = _AlertsBlock();
-              final topSellers = _TopSellersBlock();
+              final alerts = _AlertsBlock(
+                pendingOrders: kpis.pendingOrders,
+                lowStock: lowStock,
+              );
+              final topSellers = _TopSellersBlock(products: _products);
               if (stack) {
                 return Column(
                   children: [
@@ -200,7 +269,6 @@ class VendorDashboardScreen extends StatelessWidget {
     );
   }
 }
-
 class _KpiCard extends StatelessWidget {
   const _KpiCard({
     required this.title,
@@ -269,8 +337,19 @@ class _KpiCard extends StatelessWidget {
 }
 
 class _AlertsBlock extends StatelessWidget {
+  const _AlertsBlock({
+    required this.pendingOrders,
+    required this.lowStock,
+  });
+
+  final int pendingOrders;
+  final List<Product> lowStock;
+
   @override
   Widget build(BuildContext context) {
+    final lowLabel = lowStock.isEmpty
+        ? 'All active SKUs are above the stock threshold.'
+        : 'Restock: ${lowStock.first.name} — Only ${lowStock.first.stock} units left';
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -287,19 +366,15 @@ class _AlertsBlock extends StatelessWidget {
             icon: Icons.error_outline,
             color: AppColors.error,
             title: 'Orders Requiring Dispatch',
-            subtitle: 'New Order #IKY-9842 — Shipping SLA expires in 2h',
+            subtitle: pendingOrders == 0
+                ? 'No pending orders right now.'
+                : '$pendingOrders pending order${pendingOrders == 1 ? '' : 's'} waiting for processing.',
           ),
           _AlertRow(
             icon: Icons.inventory_2_outlined,
             color: AppColors.primaryDeep,
             title: 'Low Stock Warnings',
-            subtitle: 'Restock: iPhone 15 Pro Max Case — Only 2 units left',
-          ),
-          _AlertRow(
-            icon: Icons.chat_bubble_outline,
-            color: AppColors.tertiary,
-            title: 'Unresolved Customer Inquiry',
-            subtitle: 'Query regarding missing charger cable',
+            subtitle: lowLabel,
           ),
         ],
       ),
@@ -352,9 +427,13 @@ class _AlertRow extends StatelessWidget {
 }
 
 class _TopSellersBlock extends StatelessWidget {
+  const _TopSellersBlock({required this.products});
+
+  final List<Product> products;
+
   @override
   Widget build(BuildContext context) {
-    final top = ProductsMock.products.take(3).toList();
+    final top = products.take(3).toList();
     return Material(
       color: AppColors.surfaceLowest,
       shape: RoundedRectangleBorder(

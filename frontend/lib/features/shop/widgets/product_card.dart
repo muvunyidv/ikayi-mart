@@ -132,6 +132,8 @@ class ProductCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         product.originLabel!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.labelLarge?.copyWith(
                               color: AppColors.secondary,
                               fontSize: 10,
@@ -141,6 +143,8 @@ class ProductCard extends StatelessWidget {
                     const SizedBox(height: 8),
                     Text(
                       formatRwf(product.priceRwf, suffix: true),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
                             color: AppColors.primaryOrange,
                             fontSize: 16,

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/widgets.dart';
+import '../../../state/auth_state.dart';
 import '../../../state/navigation_state.dart';
 
 class VendorSidebar extends StatelessWidget {
@@ -29,7 +31,6 @@ class VendorSidebar extends StatelessWidget {
     return ImigongoBackground(
       variant: ImigongoVariant.light,
       backgroundColor: AppColors.surfaceLowest,
-      patternOpacity: 0.07,
       child: SizedBox(
         width: compact ? 72 : 240,
         child: Column(
@@ -141,47 +142,58 @@ class VendorSidebar extends StatelessWidget {
                     color: AppColors.surfaceLow,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 18,
-                        backgroundColor: AppColors.primaryOrange,
-                        child: Text(
-                          'KT',
-                          style:
-                              Theme.of(context).textTheme.labelLarge?.copyWith(
+                  child: Builder(
+                    builder: (context) {
+                      final user = context.watch<AuthState>().user;
+                      final store = user?.storeName ?? 'Vendor store';
+                      final verified = user?.isVerified == true;
+                      return Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 18,
+                            backgroundColor: AppColors.primaryOrange,
+                            child: Text(
+                              user?.storeInitials ?? 'VS',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelLarge
+                                  ?.copyWith(
                                     color: Colors.white,
                                     fontSize: 11,
                                   ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Kigali Tech Store',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleSmall
-                                  ?.copyWith(fontSize: 13),
                             ),
-                            Text(
-                              'Verified Vendor',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
-                                    fontSize: 11,
-                                    color: AppColors.success,
-                                  ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  store,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleSmall
+                                      ?.copyWith(fontSize: 13),
+                                ),
+                                Text(
+                                  verified ? 'Verified Vendor' : 'Vendor',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
+                                        fontSize: 11,
+                                        color: verified
+                                            ? AppColors.success
+                                            : AppColors.secondary,
+                                      ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.settings_outlined, size: 18),
-                    ],
+                          ),
+                          const Icon(Icons.settings_outlined, size: 18),
+                        ],
+                      );
+                    },
                   ),
                 ),
               ),

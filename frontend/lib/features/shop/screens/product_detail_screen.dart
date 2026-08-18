@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/mock_data/products_mock.dart';
+import '../../../core/api/ikayi_api.dart';
 import '../../../core/models/models.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_format.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../../state/cart_state.dart';
+import '../../../state/catalog_state.dart';
 import '../widgets/product_card.dart';
 import 'checkout_screen.dart';
 
@@ -23,12 +24,44 @@ class ProductDetailScreen extends StatefulWidget {
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   int _imageIndex = 0;
   final Map<String, String> _selectedVariants = {};
+  Product? _product;
+  bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    final product = ProductsMock.byId(widget.productId);
-    if (product != null) {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _load() async {
+    final cached = context.read<CatalogState>().byId(widget.productId);
+    if (cached != null) {
+      setState(() {
+        _applyProduct(cached);
+        _loading = false;
+      });
+    }
+    try {
+      final product = await context.read<IkayiApi>().getProduct(widget.productId);
+      if (!mounted) return;
+      setState(() {
+        _applyProduct(product);
+        _loading = false;
+        _error = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = _product == null;
+        _error = _product == null ? e.toString() : null;
+      });
+    }
+  }
+
+  void _applyProduct(Product product) {
+    _product = product;
+    if (_selectedVariants.isEmpty) {
       for (final v in product.variants) {
         if (v.options.isNotEmpty) {
           _selectedVariants[v.name] = v.options.first;
@@ -39,11 +72,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final product = ProductsMock.byId(widget.productId);
+    final product = _product;
+    if (_loading && product == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Product')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
     if (product == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Product')),
-        body: const Center(child: Text('Product not found')),
+        body: Center(child: Text(_error ?? 'Product not found')),
       );
     }
 
@@ -301,16 +340,26 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       ],
     );
 
+    final compactChrome = width < kPhoneBreakpoint;
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        leadingWidth: 140,
-        leading: TextButton.icon(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back),
-          label: const Text('Back to Shop'),
-          style: TextButton.styleFrom(foregroundColor: AppColors.onSurface),
-        ),
+        leadingWidth: compactChrome ? 56 : 140,
+        leading: compactChrome
+            ? IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back),
+                tooltip: 'Back to Shop',
+              )
+            : TextButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back),
+                label: const Text('Back to Shop'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.onSurface,
+                ),
+              ),
         actions: [
           IconButton(
             onPressed: () {
@@ -365,34 +414,41 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     const SizedBox(height: 16),
                     LayoutBuilder(
                       builder: (context, constraints) {
-                        final gap = isDesktop ? 16.0 : 10.0;
-                        final cardWidth =
-                            (constraints.maxWidth - gap * 2) / 3;
-                        final cardHeight = cardWidth / (isDesktop ? 0.72 : 0.68);
-                        return SizedBox(
-                          height: cardHeight,
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              for (var i = 0; i < recommended.length; i++) ...[
-                                if (i > 0) SizedBox(width: gap),
-                                Expanded(
-                                  child: ProductCard(
-                                    product: recommended[i],
-                                    onTap: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (_) => ProductDetailScreen(
-                                            productId: recommended[i].id,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ],
+                        final cols = productCrossAxisCount(
+                          constraints.maxWidth,
+                          max: 3,
+                        );
+                        final gap = constraints.maxWidth >= kTabletBreakpoint
+                            ? 16.0
+                            : 12.0;
+                        return GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: recommended.length,
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: cols,
+                            mainAxisSpacing: gap,
+                            crossAxisSpacing: gap,
+                            childAspectRatio: productCardAspectRatio(
+                              constraints.maxWidth,
+                            ),
                           ),
+                          itemBuilder: (context, index) {
+                            final item = recommended[index];
+                            return ProductCard(
+                              product: item,
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => ProductDetailScreen(
+                                      productId: item.id,
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
                         );
                       },
                     ),
@@ -407,14 +463,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   List<Product> _recommendedProducts(Product product) {
-    final sameCategory = ProductsMock.byCategory(product.category)
+    final catalog = context.read<CatalogState>();
+    final sameCategory = catalog
+        .byCategory(product.category)
         .where((p) => p.id != product.id)
         .toList();
     if (sameCategory.length >= 3) {
       return sameCategory.take(3).toList();
     }
 
-    final extras = ProductsMock.products
+    final extras = catalog.products
         .where(
           (p) =>
               p.id != product.id &&

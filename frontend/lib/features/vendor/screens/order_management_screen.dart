@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import '../../../core/mock_data/orders_mock.dart';
+import '../../../core/api/ikayi_api.dart';
 import '../../../core/models/models.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_format.dart';
@@ -14,17 +15,57 @@ class OrderManagementScreen extends StatefulWidget {
 
 class _OrderManagementScreenState extends State<OrderManagementScreen> {
   OrderStatus? _filter;
-  late List<CustomerOrder> _orders;
+  List<CustomerOrder> _orders = [];
+  bool _loading = true;
+  String? _error;
+
+  IkayiApi get _api => context.read<IkayiApi>();
 
   @override
   void initState() {
     super.initState();
-    _orders = List.of(OrdersMock.orders);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refresh());
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final orders = await _api.vendorOrders();
+      if (!mounted) return;
+      setState(() {
+        _orders = orders;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
   }
 
   List<CustomerOrder> get _visible {
     if (_filter == null) return _orders;
     return _orders.where((o) => o.status == _filter).toList();
+  }
+
+  Future<void> _setStatus(CustomerOrder order, OrderStatus status) async {
+    try {
+      final updated = await _api.updateOrderStatus(order.id, status);
+      setState(() {
+        final i = _orders.indexWhere((o) => o.id == order.id);
+        if (i >= 0) _orders[i] = updated;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    }
   }
 
   Future<void> _openSupport(CustomerOrder order) async {
@@ -33,7 +74,7 @@ class _OrderManagementScreenState extends State<OrderManagementScreen> {
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          title: Text('Support — #${order.id}'),
+          title: Text('Support — #${order.displayCode}'),
           content: SizedBox(
             width: 420,
             child: Column(
@@ -63,13 +104,38 @@ class _OrderManagementScreenState extends State<OrderManagementScreen> {
               child: const Text('Close'),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
+                final text = replyCtrl.text.trim();
                 Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Reply sent for #${order.id} (mock)'),
-                  ),
-                );
+                if (order.supportTicketId == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'No open ticket for #${order.displayCode}',
+                      ),
+                    ),
+                  );
+                  return;
+                }
+                if (text.isEmpty) return;
+                try {
+                  await _api.replyToTicket(
+                    ticketId: order.supportTicketId!,
+                    resolution: text,
+                  );
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Reply sent for #${order.displayCode}'),
+                    ),
+                  );
+                  await _refresh();
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(e.toString())),
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(120, 44),
@@ -80,6 +146,7 @@ class _OrderManagementScreenState extends State<OrderManagementScreen> {
         );
       },
     );
+    replyCtrl.dispose();
   }
 
   @override
@@ -128,111 +195,118 @@ class _OrderManagementScreenState extends State<OrderManagementScreen> {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppColors.surfaceLowest,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.borderSubtle),
-              ),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SingleChildScrollView(
-                  child: DataTable(
-                    headingRowColor: WidgetStateProperty.all(
-                      AppColors.surfaceLow,
-                    ),
-                    columns: const [
-                      DataColumn(label: Text('Order ID')),
-                      DataColumn(label: Text('Guest')),
-                      DataColumn(label: Text('Phone')),
-                      DataColumn(label: Text('Location')),
-                      DataColumn(label: Text('Items')),
-                      DataColumn(label: Text('Total')),
-                      DataColumn(label: Text('Status')),
-                      DataColumn(label: Text('Support')),
-                    ],
-                    rows: _visible.map((order) {
-                      final itemsLabel = order.items
-                          .map((i) => '${i.productName} ×${i.quantity}')
-                          .join(', ');
-                      return DataRow(
-                        cells: [
-                          DataCell(Text('#${order.id}')),
-                          DataCell(Text(order.guestName)),
-                          DataCell(Text(order.phone)),
-                          DataCell(Text(order.locationLabel)),
-                          DataCell(
-                            SizedBox(
-                              width: 180,
-                              child: Text(
-                                itemsLabel,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(_error!, textAlign: TextAlign.center),
+                            const SizedBox(height: 12),
+                            ElevatedButton(
+                              onPressed: _refresh,
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      )
+                    : Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceLowest,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.borderSubtle),
+                        ),
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: SingleChildScrollView(
+                            child: DataTable(
+                              headingRowColor: WidgetStateProperty.all(
+                                AppColors.surfaceLow,
                               ),
-                            ),
-                          ),
-                          DataCell(
-                            Text(
-                              formatRwf(order.grandTotalRwf, suffix: true),
-                            ),
-                          ),
-                          DataCell(
-                            DropdownButton<OrderStatus>(
-                              value: order.status,
-                              underline: const SizedBox.shrink(),
-                              items: OrderStatus.values
-                                  .map(
-                                    (s) => DropdownMenuItem(
-                                      value: s,
-                                      child: Text(s.label),
+                              columns: const [
+                                DataColumn(label: Text('Order ID')),
+                                DataColumn(label: Text('Guest')),
+                                DataColumn(label: Text('Phone')),
+                                DataColumn(label: Text('Location')),
+                                DataColumn(label: Text('Items')),
+                                DataColumn(label: Text('Total')),
+                                DataColumn(label: Text('Status')),
+                                DataColumn(label: Text('Support')),
+                              ],
+                              rows: _visible.map((order) {
+                                final itemsLabel = order.items
+                                    .map(
+                                      (i) =>
+                                          '${i.productName} ×${i.quantity}',
+                                    )
+                                    .join(', ');
+                                return DataRow(
+                                  cells: [
+                                    DataCell(Text('#${order.displayCode}')),
+                                    DataCell(Text(order.guestName)),
+                                    DataCell(Text(order.phone)),
+                                    DataCell(Text(order.locationLabel)),
+                                    DataCell(
+                                      SizedBox(
+                                        width: 180,
+                                        child: Text(
+                                          itemsLabel,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
                                     ),
-                                  )
-                                  .toList(),
-                              onChanged: (status) {
-                                if (status == null) return;
-                                setState(() {
-                                  final i = _orders.indexWhere(
-                                    (o) => o.id == order.id,
-                                  );
-                                  if (i < 0) return;
-                                  final old = _orders[i];
-                                  _orders[i] = CustomerOrder(
-                                    id: old.id,
-                                    guestName: old.guestName,
-                                    phone: old.phone,
-                                    district: old.district,
-                                    sector: old.sector,
-                                    landmark: old.landmark,
-                                    items: old.items,
-                                    deliveryFeeRwf: old.deliveryFeeRwf,
-                                    status: status,
-                                    createdAt: old.createdAt,
-                                    paymentMethod: old.paymentMethod,
-                                    supportTicket: old.supportTicket,
-                                  );
-                                });
-                              },
+                                    DataCell(
+                                      Text(
+                                        formatRwf(
+                                          order.grandTotalRwf,
+                                          suffix: true,
+                                        ),
+                                      ),
+                                    ),
+                                    DataCell(
+                                      DropdownButton<OrderStatus>(
+                                        value: order.status,
+                                        underline: const SizedBox.shrink(),
+                                        items: OrderStatus.values
+                                            .where(
+                                              (s) =>
+                                                  s != OrderStatus.cancelled,
+                                            )
+                                            .map(
+                                              (s) => DropdownMenuItem(
+                                                value: s,
+                                                child: Text(s.label),
+                                              ),
+                                            )
+                                            .toList(),
+                                        onChanged: (status) {
+                                          if (status == null) return;
+                                          _setStatus(order, status);
+                                        },
+                                      ),
+                                    ),
+                                    DataCell(
+                                      IconButton(
+                                        tooltip: 'Resolve issue',
+                                        onPressed: () => _openSupport(order),
+                                        icon: Icon(
+                                          Icons.support_agent,
+                                          color: order.status ==
+                                                  OrderStatus.issueReported
+                                              ? AppColors.error
+                                              : AppColors.secondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }).toList(),
                             ),
                           ),
-                          DataCell(
-                            IconButton(
-                              tooltip: 'Resolve issue',
-                              onPressed: () => _openSupport(order),
-                              icon: Icon(
-                                Icons.support_agent,
-                                color: order.status == OrderStatus.issueReported
-                                    ? AppColors.error
-                                    : AppColors.secondary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
-            ),
+                        ),
+                      ),
           ),
         ],
       ),

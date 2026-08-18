@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/api/ikayi_api.dart';
 import '../../../core/constants/rwanda_locations.dart';
-import '../../../core/mock_data/products_mock.dart';
 import '../../../core/models/models.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/currency_format.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../../state/cart_state.dart';
+import '../../../state/catalog_state.dart';
 import '../../../state/navigation_state.dart';
 import '../widgets/product_card.dart';
 import 'checkout_screen.dart';
@@ -27,6 +29,14 @@ class _LandingScreenState extends State<LandingScreen> {
   final Set<String> _favorites = {};
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<CatalogState>().load();
+    });
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     _scrollController.dispose();
@@ -39,8 +49,10 @@ class _LandingScreenState extends State<LandingScreen> {
     }
   }
 
-  List<Product> _filtered(String category) {
-    final byCat = ProductsMock.byCategory(category);
+  List<Product> _filtered(List<Product> products, String category) {
+    final byCat = category == 'All'
+        ? products
+        : products.where((p) => p.category == category).toList();
     if (_query.isEmpty) return byCat;
     final q = _query.toLowerCase();
     return byCat
@@ -140,14 +152,74 @@ class _LandingScreenState extends State<LandingScreen> {
     );
   }
 
+  Future<void> _trackOrder() async {
+    final codeCtrl = TextEditingController();
+    final code = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Track order'),
+          content: TextField(
+            controller: codeCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Guest tracking ID',
+              hintText: 'IKY-9842',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, codeCtrl.text.trim()),
+              child: const Text('Track'),
+            ),
+          ],
+        );
+      },
+    );
+    codeCtrl.dispose();
+    if (code == null || code.isEmpty || !mounted) return;
+
+    try {
+      final order = await context.read<IkayiApi>().trackOrder(code);
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) {
+          return AlertDialog(
+            title: Text('#${order.displayCode}'),
+            content: Text(
+              '${order.status.label}\n${order.guestName}\n${order.locationLabel}\n${formatRwf(order.grandTotalRwf, suffix: true)}',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Close'),
+              ),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final nav = context.watch<NavigationState>();
     final cart = context.watch<CartState>();
+    final catalog = context.watch<CatalogState>();
     final width = MediaQuery.sizeOf(context).width;
     final isDesktop = width >= kDesktopBreakpoint;
-    final products = _filtered(nav.selectedCategory);
-    final crossAxisCount = isDesktop ? 4 : 2;
+    final products = _filtered(catalog.products, nav.selectedCategory);
+    final crossAxisCount = productCrossAxisCount(width);
+    final cardAspectRatio = productCardAspectRatio(width);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -178,6 +250,7 @@ class _LandingScreenState extends State<LandingScreen> {
                   _scrollToTop();
                   nav.setMode(AppMode.vendor);
                 },
+                onTrack: _trackOrder,
               ),
             Expanded(
               child: Row(
@@ -236,7 +309,7 @@ class _LandingScreenState extends State<LandingScreen> {
                             ),
                           ),
                         ),
-                        if (isDesktop)
+                        if (isDesktop && catalog.products.isNotEmpty)
                           SliverPadding(
                             padding: const EdgeInsets.symmetric(horizontal: 24),
                             sliver: SliverToBoxAdapter(
@@ -249,15 +322,71 @@ class _LandingScreenState extends State<LandingScreen> {
                               ),
                             ),
                           ),
-                        SliverPadding(
-                          padding: EdgeInsets.all(isDesktop ? 24 : 16),
-                          sliver: SliverGrid(
+                        if (catalog.loading && catalog.products.isEmpty)
+                          const SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: Center(child: CircularProgressIndicator()),
+                          )
+                        else if (catalog.error != null && catalog.products.isEmpty)
+                          SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      catalog.error!,
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    ElevatedButton(
+                                      onPressed: () =>
+                                          context.read<CatalogState>().load(),
+                                      child: const Text('Retry'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          )
+                        else if (catalog.products.isEmpty)
+                          const SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(24),
+                                child: Text(
+                                  'No products in the marketplace yet.\nAdd one from Vendor Central → Inventory.',
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                          )
+                        else if (products.isEmpty)
+                          const SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(24),
+                                child: Text(
+                                  'No products match this search or category.',
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          SliverPadding(
+                            padding: EdgeInsets.all(isDesktop ? 24 : 16),
+                            sliver: SliverGrid(
                             gridDelegate:
                                 SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: crossAxisCount,
                               mainAxisSpacing: 16,
                               crossAxisSpacing: 16,
-                              childAspectRatio: isDesktop ? 0.72 : 0.68,
+                              childAspectRatio: cardAspectRatio,
                             ),
                             delegate: SliverChildBuilderDelegate(
                               (context, index) {
@@ -315,6 +444,7 @@ class _Header extends StatelessWidget {
     required this.onLocation,
     required this.onCart,
     required this.onVendor,
+    required this.onTrack,
   });
 
   final bool isDesktop;
@@ -325,6 +455,7 @@ class _Header extends StatelessWidget {
   final VoidCallback onLocation;
   final VoidCallback onCart;
   final VoidCallback onVendor;
+  final VoidCallback onTrack;
 
   @override
   Widget build(BuildContext context) {
@@ -413,6 +544,11 @@ class _Header extends StatelessWidget {
                   label: Text('$cartCount'),
                   child: const Icon(Icons.shopping_cart_outlined),
                 ),
+              ),
+              IconButton(
+                tooltip: 'Track order',
+                onPressed: onTrack,
+                icon: const Icon(Icons.local_shipping_outlined),
               ),
               IconButton(
                 tooltip: 'Vendor dashboard',
@@ -523,10 +659,10 @@ class _CategoryPills extends StatelessWidget {
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         scrollDirection: Axis.horizontal,
-        itemCount: ProductsMock.categories.length,
+        itemCount: kCatalogCategories.length,
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          final cat = ProductsMock.categories[index];
+          final cat = kCatalogCategories[index];
           final active = cat == selected;
           return ChoiceChip(
             label: Text(cat),
@@ -557,9 +693,7 @@ class _DesktopFilters extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cats = ProductsMock.categories
-        .where((c) => c != 'All')
-        .toList();
+    final cats = kCatalogCategories.where((c) => c != 'All').toList();
     return Material(
       color: AppColors.surfaceLowest,
       child: Padding(

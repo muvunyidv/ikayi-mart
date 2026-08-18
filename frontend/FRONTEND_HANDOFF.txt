@@ -1,0 +1,2124 @@
+IKAYI MART — FRONTEND HANDOFF (COMPLETE)
+=========================================
+Written: 14 August 2026
+Audience: another AI continuing this Flutter frontend from the current working tree.
+Do not miss details. This is the source of truth for where the project is right now.
+
+===============================================================================
+0. CURRENT GIT STATE (READ THIS FIRST)
+===============================================================================
+
+Repo: https://github.com/muvunyidv/ikayi-mart
+Local path: D:/Projects/Ikayi-mart
+Branch: main
+Tracking: origin/main
+Ahead of origin by 2 commits (not pushed):
+  d61ec9f Deploy latest UI updates
+  dab159a Deploy latest UI updates
+
+Uncommitted working-tree changes (6 files, +193 / −113):
+  lib/core/theme/app_theme.dart
+  lib/core/widgets/imigongo_background.dart
+  lib/features/shop/screens/landing_screen.dart
+  lib/features/shop/screens/product_detail_screen.dart
+  lib/features/shop/widgets/product_card.dart
+  lib/features/vendor/widgets/vendor_sidebar.dart
+
+The descriptions below reflect the WORKING TREE (including uncommitted UI), not only HEAD.
+
+Recent history (oldest last):
+  2a3b84a first commit
+  7ee3c74 Add GitHub Pages deploy workflow
+  2c51a92 Trigger GitHub Pages deployment
+  0d35036 Create CNAME
+  57aff08 Add production web build for gh-pages
+  ae68d45 added imigongo pattern in the background
+  88d9def Merge branch 'main' of https://github.com/muvunyidv/ikayi-mart
+  17f3613 added recomended products
+  edff141 Update service worker version and refactor function names in JavaScript files
+  f7a952c Update production build
+  d61ec9f Deploy latest UI updates
+  dab159a Deploy latest UI updates
+
+===============================================================================
+1. WHAT THIS PRODUCT IS
+===============================================================================
+
+IKAYI MART is a Flutter multi-platform marketplace prototype (package name
+ikayi_mart, version 1.0.0+1) for Rwanda.
+
+Two experiences live in ONE app, switched by NavigationState.mode (NOT by URLs):
+
+  1) Shopper / storefront
+     Guest catalog, product detail, guest checkout, fake tracking ID.
+     No account. No login.
+
+  2) Vendor Central
+     Dashboard KPIs, inventory CRUD (local only), order status board,
+     placeholder BMS Sync + Support screens.
+
+There is NO backend, NO auth, NO persistence, NO named routing, NO HTTP client.
+Everything is in-memory mock data + Provider.
+
+Intended platforms (from .metadata): Android, iOS, macOS, web, Windows.
+There is NO linux/ folder. Web is the real deployment target (GitHub Pages).
+
+Live/custom domain: mart.ikayi.app
+Design comments in code reference a "Stitch design system" plus brand orange.
+
+Marketing copy (web/index.html and web/manifest.json):
+  "Fast, 3-step guest checkout e-commerce marketplace and vendor management
+   platform in Rwanda."
+
+The UI currently behaves more like 2 steps (browse → checkout).
+Checkout heading says "CHECKOUT — Step 2 of 2".
+
+Copy and data are Rwanda-specific: RWF, Kigali districts/sectors,
+MTN MoMo / Airtel Money, 60-minute Kigali delivery messaging,
+Imigongo geometric motif.
+
+README.md is still the default Flutter template. Ignore it for product intent.
+
+===============================================================================
+2. STACK AND CONSTRAINTS
+===============================================================================
+
+SDK: Dart ^3.12.2  (pubspec environment)
+
+Direct dependencies:
+  flutter            SDK
+  cupertino_icons    ^1.0.8     UNUSED in app code (Material icons only)
+  google_fonts       ^8.2.1     Inter, fetched at runtime
+  provider           ^6.1.5+1   CartState + NavigationState
+  intl               ^0.20.3    RWF number formatting
+
+NOT present (do not assume they exist):
+  go_router, http/Dio, Firebase, Supabase, Hive, shared_preferences,
+  cached_network_image, fl_chart or any charts package, l10n/intl codegen,
+  any auth package.
+
+Assets: NONE declared in pubspec.yaml.
+  Product images = Unsplash network URLs.
+  Imigongo pattern = CustomPainter only (no SVG/PNG).
+
+Lint: default flutter_lints via analysis_options.yaml.
+Tests: one smoke test in test/widget_test.dart —
+  pumps IkayiMartApp and expects find.textContaining('IKAYI MART').
+
+Flutter uses-material-design: true.
+publish_to: 'none'
+
+.metadata Flutter revision: ee80f08bbf97172ec030b8751ceab557177a34a6 (stable)
+Project type: app
+Platforms created: android, ios, macos, web, windows (NOT linux)
+
+===============================================================================
+3. DIRECTORY MAP — lib/ IS THE ENTIRE FRONTEND
+===============================================================================
+
+lib/
+  main.dart                          app + AppShell + VendorShell + placeholder
+  state/
+    cart_state.dart                  in-memory cart
+    navigation_state.dart            shopper/vendor mode + filters + location
+  core/
+    theme/app_colors.dart            design tokens
+    theme/app_theme.dart             ThemeData + breakpoints + grid helpers
+    models/models.dart               Product, CartItem, CustomerOrder, enums
+    constants/rwanda_locations.dart  district → sectors map
+    mock_data/products_mock.dart     12 products
+    mock_data/orders_mock.dart       8 orders + weekly revenue series
+    utils/currency_format.dart       formatRwf()
+    utils/scroll_to_top.dart         ScrollToTopObserver + scrollAppToTop()
+    widgets/widgets.dart             barrel export: footer + imigongo
+    widgets/app_footer.dart
+    widgets/imigongo_background.dart
+  features/
+    shop/
+      screens/landing_screen.dart
+      screens/product_detail_screen.dart
+      screens/checkout_screen.dart
+      widgets/product_card.dart
+      widgets/guest_tracking_modal.dart
+    vendor/
+      screens/vendor_dashboard_screen.dart
+      screens/inventory_screen.dart
+      screens/order_management_screen.dart
+      widgets/vendor_sidebar.dart
+
+There is NO features/auth, NO api/, NO repositories/, NO services/.
+Vendor inventory edits do NOT write back to ProductsMock.
+Shopper catalog is ALWAYS the const mock list.
+
+23 Dart files under lib/. That is the whole app UI.
+
+===============================================================================
+4. APP BOOTSTRAP AND NAVIGATION ARCHITECTURE
+===============================================================================
+
+main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const IkayiMartApp());
+}
+
+IkayiMartApp (StatelessWidget):
+  MultiProvider:
+    ChangeNotifierProvider(create: (_) => CartState())
+    ChangeNotifierProvider(create: (_) => NavigationState())
+  MaterialApp:
+    title: 'IKAYI MART | E-Commerce & Business Marketplace'
+    debugShowCheckedModeBanner: false
+    theme: AppTheme.light          // LIGHT ONLY — no dark theme
+    navigatorObservers: [ScrollToTopObserver()]
+    home: const AppShell()         // NO routes map, NO onGenerateRoute
+
+MODE SWITCH (AppShell watches NavigationState.mode):
+  if nav.mode == AppMode.shopper
+    → LandingScreen(key: ValueKey('mode-shopper'))
+  else
+    → VendorShell(key: ValueKey('mode-vendor'))
+
+The ValueKeys remount the tree on mode switch so scroll starts at top.
+
+SHOPPER SUB-PAGES use imperative Navigator.push(MaterialPageRoute(...)):
+  Landing → ProductDetailScreen(productId: product.id)
+  Landing cart icon / PDP cart / PDP Buy Now → CheckoutScreen
+  PDP recommended card → another ProductDetailScreen (STACK GROWS; Back pops one PDP)
+
+VENDOR SUB-PAGES are NOT routes.
+  VendorShell switches on nav.vendorSection and wraps body in:
+    KeyedSubtree(key: ValueKey(nav.vendorSection), child: body)
+
+SCROLL-TO-TOP:
+  ScrollToTopObserver jumps PrimaryScrollController on didPush / didPop / didReplace.
+  Landing uses a PRIVATE ScrollController, so the observer often does NOTHING there.
+  Landing also calls _scrollToTop() (jumpTo(0), not animate) before opening PDP,
+  checkout, or vendor mode.
+
+How shopper enters vendor: header IconButton storefront_outlined → nav.setMode(AppMode.vendor)
+How vendor returns to shop:
+  Desktop: "Back to Storefront" TextButton.icon
+  Mobile AppBar: TextButton "Shop"
+  Both call setMode(AppMode.shopper)
+
+NO deep links. NO browser URL changes for screens (Flutter web default).
+
+===============================================================================
+5. STATE
+===============================================================================
+
+----- NavigationState (ChangeNotifier) — lib/state/navigation_state.dart -----
+
+Enums:
+  AppMode { shopper, vendor }
+  VendorSection { dashboard, inventory, orders, bmsSync, support }
+
+Fields and defaults:
+  _mode              AppMode.shopper
+  _vendorSection     VendorSection.dashboard
+  _selectedCategory  'All'
+  _selectedDistrict  'Nyarugenge'
+  _selectedSector    'Nyarugenge'
+
+Getters:
+  mode, vendorSection, selectedCategory, selectedDistrict, selectedSector
+  locationLabel → '$_selectedSector, $_selectedDistrict'
+                  e.g. "Nyarugenge, Nyarugenge"
+
+Methods:
+  setMode(AppMode)                 no-op if same
+  toggleMode()                     UNUSED by any UI
+  setVendorSection(VendorSection)  also forces _mode = vendor if not already
+  setCategory(String)
+  setLocation({required district, required sector})
+
+NOT persisted. Survives shopper↔vendor because providers sit ABOVE AppShell.
+
+----- CartState (ChangeNotifier) — lib/state/cart_state.dart -----
+
+In-memory List<CartItem> _items (exposed unmodifiable).
+
+static const int deliveryFeeRwf = 2000;
+
+Getters:
+  items
+  itemCount      sum of quantities (not unique lines)
+  subtotalRwf    sum of lineTotals
+  grandTotalRwf  0 if empty, else subtotal + 2000
+  isEmpty
+
+Methods:
+  addProduct(Product, {quantity = 1, selectedVariants = const {}})
+    Merges if same product.id AND mapEquals on selectedVariants; else new line.
+  updateQuantity(int index, int quantity)
+    quantity <= 0 removes the line. NEVER CALLED BY ANY UI.
+  removeAt(int index)
+    NEVER CALLED BY ANY UI.
+  clear()
+    Called after mock place-order.
+
+Cart is NOT persisted. Mode switch keeps it (same providers).
+Checkout summary is READ-ONLY — no qty stepper, no remove.
+
+===============================================================================
+6. DOMAIN MODELS — lib/core/models/models.dart
+===============================================================================
+
+class ProductVariant {
+  final String name;            // e.g. "Color", "Size", "Grind"
+  final List<String> options;
+}
+
+class Product {
+  required: id, name, category, priceRwf (int), imageUrl, vendorName,
+            description, stock
+  optional: badge (String?), originLabel (String?),
+            gallery (default const []),
+            variants (default const []),
+            isActive (default true)
+  defaults:
+    deliveryNote =
+      'Fast Kigali delivery — most orders arrive within 60 minutes in Gasabo, Kicukiro & Nyarugenge.'
+    warrantyNote =
+      'Seller-backed warranty. Chat support available for returns & exchanges.'
+
+  bool get isLowStock => stock > 0 && stock <= 5;
+  bool get inStock => stock > 0;
+  List<String> get allImages =>
+      gallery.isEmpty ? [imageUrl] : [imageUrl, ...gallery];
+      // gallery is EXTRA shots; imageUrl is always first
+
+  NO copyWith on Product. Inventory edit reconstructs Product(...) fully.
+}
+
+class CartItem {
+  final Product product;
+  final int quantity;                        // default 1
+  final Map<String, String> selectedVariants; // default const {}
+  int get lineTotal => product.priceRwf * quantity;
+  HAS copyWith.
+}
+
+enum OrderStatus { pending, processing, shipped, delivered, issueReported }
+
+extension OrderStatusLabel on OrderStatus {
+  pending        → 'Pending'
+  processing     → 'Processing'
+  shipped        → 'Shipped'
+  delivered      → 'Delivered'
+  issueReported  → 'Issue Reported'
+}
+
+class OrderLineItem {
+  productName, quantity, unitPriceRwf
+  int get totalRwf => unitPriceRwf * quantity
+  NO product id — names only.
+}
+
+class CustomerOrder {
+  required: id, guestName, phone, district, sector, landmark, items,
+            deliveryFeeRwf, status, createdAt
+  optional: paymentMethod (default 'MTN MoMo'),
+            supportTicket (String?)
+  int get itemsTotalRwf
+  int get grandTotalRwf => itemsTotalRwf + deliveryFeeRwf
+  String get locationLabel => '$sector, $district'
+  NO copyWith. Status changes rebuild the whole object field-by-field.
+}
+
+===============================================================================
+7. THEME AND DESIGN TOKENS
+===============================================================================
+
+----- Breakpoints (app_theme.dart) — UNCOMMITTED ADDITIONS -----
+
+  const double kDesktopBreakpoint = 900;   // chrome: header/sidebar, vendor appbar vs sidebar,
+                                           // PDP 2-column, checkout 2-column
+  const double kTabletBreakpoint  = 600;   // grid columns, PDP recommended gap
+  const double kPhoneBreakpoint   = 400;   // PDP back button: icon-only vs "Back to Shop"
+
+int productCrossAxisCount(double width, {int max = 4}) {
+  count = width >= 900 → 4
+        : width >= 600 → 3
+        : width >= 340 → 2
+        : 1
+  return count.clamp(1, max);
+}
+  Recommended grid uses max: 3 so short lists never force empty columns.
+  Comment: "Phones stay at 2 columns when space allows; only very narrow widths drop to 1."
+
+double productCardAspectRatio(double width) {
+  >= 900 → 0.72
+  >= 600 → 0.70
+  else   → 0.68
+}
+  Comment: "tuned so image + title + price fit without clipping."
+
+Landing PREVIOUSLY hard-coded 4 vs 2 columns and 0.72 vs 0.68.
+That is what the uncommitted landing_screen.dart diff changes.
+
+Vendor dashboard uses ITS OWN width breakpoints (520, 800, 900, 600)
+independent of kDesktopBreakpoint for KPIs / header wrap / alerts stack.
+
+----- AppColors (lib/core/theme/app_colors.dart) -----
+Comment: "IKAYI MART color tokens — aligned with Stitch design system + brand orange."
+
+Brand / CTA:
+  primaryOrange        #FF5722     brand, CTAs, badges, selected chips  (spec)
+  primaryContainer     #FF6600     Stitch CTA; ColorScheme.primaryContainer
+  primaryDeep          #A33E00     category chip on PDP, low-stock, chart line
+  primaryLight         #FFE8DE     nav-active Imigongo fill
+  onPrimary            #FFFFFF
+  onPrimaryContainer   #561D00
+  inversePrimary       #FFB596
+
+Surfaces:
+  surfaceBackground    #F8F9FA     scaffold / Imigongo light ground
+  surface              #F8F9FA     alias
+  surfaceBright        #F8F9FA     alias
+  surfaceDim           #D9DADB     unused in widgets so far
+  surfaceLowest        #FFFFFF     cards, header, tables
+  surfaceLow           #F3F4F5     table header, vendor card, tracking box
+  surfaceContainer     #EDEEEF     unused
+  surfaceHigh          #E7E8E9     chips, image fallbacks
+  surfaceHighest       #E1E3E4
+  surfaceVariant       #E1E3E4
+  inputFill            #F1F3F5     text fields
+  borderSubtle         #E9ECEF     card/table borders
+
+Text / on-surface:
+  darkText             #1A1A1A     unused (onSurface used instead)
+  onSurface            #191C1D     body text
+  onSurfaceVariant     #5A4136     warm brown; ColorScheme only
+  secondary            #5B5F63     muted text
+  secondaryDark        #212529     unused
+  onSecondary          #FFFFFF
+  secondaryContainer   #DDE0E5
+  onSecondaryContainer #5F6368
+
+Outline:
+  outline              #8E7164     ColorScheme
+  outlineVariant       #E3BFB1     ColorScheme
+
+Semantic:
+  tertiary             #005BC0     links, +12.5% KPI, inquiry alert
+  tertiaryContainer    #5895FF     unused in widgets
+  success              #28A745     in-stock, BMS connected, Verified Vendor
+  error                #BA1A1A
+  errorContainer       #FFDAD6
+  onError              #FFFFFF
+  warning              #DC3545     UNUSED (named warning but looks like Bootstrap danger)
+
+Inverse:
+  inverseSurface       #2E3132     Imigongo dark variant ground (variant unused in screens)
+  inverseOnSurface     #F0F1F2
+
+Shadows:
+  cardShadow           0x0D000000  ~5% black
+  primaryShadow        0x33FF6600  ~20% orange  (elevatedButton shadowColor; elevation is 0)
+
+Imigongo light stroke is HARDCODED Color(0xFFE2E8F0), not an AppColors token.
+
+----- Typography -----
+GoogleFonts.interTextTheme() with these overrides (all color onSurface unless noted):
+
+  displayLarge    30 / w700 / height 38/30 / letterSpacing -0.02*30
+  displayMedium   24 / w700 / height 32/24 / letterSpacing -0.02*24
+  headlineMedium  20 / w600 / height 28/20
+  titleSmall      16 / w600 / height 24/16
+  bodyLarge       16 / w400 / height 24/16
+  bodyMedium      14 / w400 / height 20/14
+  labelLarge      12 / w700 / height 16/12 / letterSpacing 0.05*12 / color SECONDARY
+                  (used for uppercase labels)
+
+AppBar titleTextStyle: Inter 18 w700 color primaryOrange.
+
+----- Component themes (AppTheme.light) -----
+useMaterial3: true
+brightness: Brightness.light
+scaffoldBackgroundColor: surfaceBackground
+
+AppBar: surfaceLowest, onSurface fg, elevation 0, scrolledUnderElevation 0.5
+
+Cards: CardThemeData
+  color surfaceLowest, elevation 0, margin EdgeInsets.zero
+  shape RoundedRectangleBorder radius 12, side borderSubtle
+
+ElevatedButton:
+  bg primaryOrange, fg onPrimary
+  minimumSize Size.fromHeight(56)
+  elevation 0, shadowColor primaryShadow
+  radius 16
+  text Inter 16 w700
+
+OutlinedButton:
+  fg primaryOrange
+  minimumSize Size.fromHeight(56)
+  side primaryOrange width 1.5
+  radius 16
+  text Inter 16 w600
+
+InputDecoration:
+  filled true, fillColor inputFill
+  border/enabledBorder: radius 12, BorderSide.none
+  focusedBorder: radius 12, primaryOrange width 2
+  contentPadding horizontal 16 vertical 14
+  hintStyle Inter secondary 14
+
+ChipTheme:
+  background surfaceHigh, selectedColor primaryOrange
+  labelStyle Inter 14 w600 onSurface
+  secondaryLabelStyle Inter 14 w600 onPrimary
+  padding horizontal 12 vertical 8
+  shape radius 24, side none
+
+Divider: borderSubtle, thickness 1, space 1
+
+Switch:
+  selected: thumb onPrimary, track primaryOrange
+  unselected: thumb surfaceLowest, track surfaceHigh
+
+NO dark ThemeData. NO custom pageTransitionsTheme.
+
+===============================================================================
+8. SHARED WIDGETS AND UTILS
+===============================================================================
+
+----- ImigongoBackground (UNCOMMITTED REWRITE) -----
+lib/core/widgets/imigongo_background.dart
+
+Rwandan Imigongo-inspired zigzag/diamond mesh. CustomPainter only — no assets.
+Comment: Flutter equivalent of an inline SVG data:image/svg+xml CSS background.
+Matches IKAYI BMS motif: continuous horizontal zigzag/chevron strokes stacked so
+peaks of one row meet valleys of the next → seamless diamond mesh. Nested
+parallel zigzags add inner-diamond imprint.
+
+enum ImigongoVariant { dark, light, navActive }
+
+Constructor:
+  required child
+  variant = ImigongoVariant.light
+  backgroundColor (optional override)
+  patternOpacity (optional override)
+
+Resolved backgrounds:
+  dark      → AppColors.inverseSurface
+  light     → AppColors.surfaceBackground
+  navActive → AppColors.primaryLight
+
+Resolved opacities (CHANGED in uncommitted work):
+  dark      → 0.10   (was 0.09)
+  light     → 0.85   (was 0.07)  // "soft watermark: light grey stroke already near the ground color"
+  navActive → 0.18
+
+Stroke colors:
+  dark      → Colors.white
+  light     → Color(0xFFE2E8F0)  // was AppColors.onSurface; "matches reference soft grey"
+  navActive → AppColors.primaryOrange
+
+Painter constants (NEW):
+  _periodX = 40   // peak-to-peak horizontal wavelength (BMS ~36–40px tile)
+  _periodY = 40   // full diamond height
+  _nest    = 5    // inset for nested inner diamond outline
+
+Light/dark paint (_paintChevronMesh):
+  Main stroke width 1.2, StrokeJoin.miter, StrokeCap.butt
+  Nested stroke width 1, alpha * 0.85
+  Rows every halfY (20px) so valleys sit on next row's peaks
+  Nested lattice: halfX - nest*0.35, halfY - nest, yOffset nest, xOffset nest*0.35
+  Guard: if halfX <= 4 || halfY <= 4, skip nested/rows
+  Zigzag: valley → peak → valley → peak (moveTo then lineTo pairs)
+
+navActive paint (_paintNavActive) — UNCHANGED in spirit:
+  Horizontal linear gradient fade:
+    primaryColor alpha 0.07 → 0.02 → 0.0  at stops 0.0, 0.55, 1.0
+  Two round-cap zigzags, period 14, amplitude (height*0.28).clamp(4, 9)
+  Echo path offset +5 y, amplitude * 0.7, alpha * 0.45
+
+shouldRepaint: variant, strokeColor, primaryColor, patternOpacity
+
+Used on:
+  shopper landing body
+  PDP body
+  checkout body
+  vendor content column
+  vendor sidebar (light + backgroundColor surfaceLowest)
+
+Vendor sidebar USED to pass patternOpacity: 0.07. That override was REMOVED
+in uncommitted vendor_sidebar.dart so it uses light default 0.85.
+
+dark variant is implemented but NOT used on any current screen.
+
+OLD painter (committed, replaced in working tree): bandHeight 56, zigWidth 28,
+inset 18, upper/lower zigzag bands, plus orange accent chevrons every 200px
+on light variant. That is GONE in the working tree.
+
+----- AppFooter -----
+lib/core/widgets/app_footer.dart
+Centered: "© {DateTime.now().year} IKAYI MART. All rights reserved."
+fontSize 11, height 1.2, color secondary, padding horizontal 16 vertical 8.
+Shown on shopper landing AND vendor shell.
+NOT on PDP. NOT on checkout.
+
+Barrel: lib/core/widgets/widgets.dart exports app_footer.dart and imigongo_background.dart.
+
+----- formatRwf -----
+lib/core/utils/currency_format.dart
+NumberFormat('#,###', 'en_US')
+  suffix: false (default) → "RWF 45,000"
+  suffix: true            → "45,000 RWF"
+Cards, PDP, checkout, inventory, orders use suffix: true.
+Dashboard today's revenue uses default (prefix): "RWF 1,520,000"
+
+----- scroll_to_top.dart -----
+scrollAppToTop(context): post-frame callback, PrimaryScrollController.maybeOf,
+jumps ALL attached positions to 0 if mounted and hasClients.
+
+ScrollToTopObserver extends NavigatorObserver, calls _reset → scrollAppToTop
+on didPush, didPop, didReplace.
+
+----- RwandaLocations -----
+lib/core/constants/rwanda_locations.dart
+Comment: "Rwandan District → Sectors for guest checkout location selectors."
+
+static const Map<String, List<String>> districts:
+
+  Gasabo: Remera, Kimironko, Kacyiru, Gisozi, Bumbogo, Jabana, Nduba, Gatsata,
+          Gikomero, Jali, Kinyinya, Ndera, Rusororo, Rutunga, Kanombe
+  Kicukiro: Gatenga, Gikondo, Kagarama, Kanombe, Kicukiro, Kigarama, Masaka,
+            Niboye, Nyarugunga, Gahanga
+  Nyarugenge: Nyamirambo, Nyarugenge, Muhima, Rwezamenyo, Kimisagara, Gitega,
+              Kanyinya, Kigali, Mageragere, Nyakabanda
+  Bugesera: Gashora, Juru, Kamabuye, Ntarama, Nyamata, Rilima, Ruhuha, Shyara
+  Rwamagana: Fumbwe, Gahengeri, Gishari, Karenge, Kigabiro, Muhazi, Munyaga,
+             Munyiginya, Musha, Muyumbu, Mwulire, Nyakaliro, Nzige, Rubona
+  Musanze: Busogo, Cyuve, Gacaca, Gashaki, Gataraga, Kimonyi, Kinigi, Muhoza,
+           Muko, Musanze, Nkotsi, Nyange, Remera, Rwaza, Shingiro
+  Huye: Gishamvu, Huye, Karama, Kigoma, Kinazi, Maraba, Mbazi, Mukura, Ngoma,
+        Ruhashya, Rusatira, Rwaniro, Simbi, Tumba
+  Rubavu: Bugeshi, Busasamana, Cyanzarwe, Gisenyi, Kanama, Kanzenze, Mudende,
+          Nyakiliba, Nyamyumba, Nyundo, Rubavu, Rugerero
+
+districtNames → districts.keys.toList()..sort()
+  Alphabetical: Bugesera, Gasabo, Huye, Kicukiro, Musanze, Nyarugenge, Rubavu, Rwamagana
+
+sectorsFor(district) → List.from(districts[district] ?? const [])
+
+DATA QUIRKS:
+  Kanombe is listed under BOTH Gasabo and Kicukiro.
+  Remera is listed under BOTH Gasabo and Musanze.
+  Gasabo list includes Kanombe (usually a Kicukiro sector).
+  Lists are NOT exhaustive official sector lists.
+
+Only 8 districts (Kigali 3 + Bugesera, Rwamagana, Musanze, Huye, Rubavu).
+Not all 30 Rwanda districts.
+
+===============================================================================
+9. MOCK CATALOG — lib/core/mock_data/products_mock.dart
+===============================================================================
+
+abstract final class ProductsMock
+
+static const categories = [
+  'All', 'Electronics', 'Apparel', 'Home', 'Beauty', 'Fresh Produce'
+];
+Order of this list is the order of mobile ChoiceChips.
+
+Helpers:
+  byId(String) → Product?  (firstWhere in try/catch, null on miss)
+  byCategory(String) → if 'All' return products else where category ==
+  search(String) → trim toLower; empty query returns all; else matches
+                   name OR category OR vendorName
+                   LANDING DOES NOT CALL THIS. Landing filters name+vendor only
+                   AFTER category filter.
+
+12 products. IDs are the PDP lookup keys.
+
+id                 name                                  cat             RWF    stock  badge           origin              vendor                      variants                                      gallery extras
+p-headphones       Pro Sound Wireless Headphones         Electronics     45000  24     HOT SELLER      AUDIO               Kigali Tech Store           Color: Black, White, Navy                      2
+p-ceramic-set      Artisan Ceramic Coffee Set            Home            32500  12     FRESH ARRIVAL   ARTISANAL DECOR     Nyamirambo Crafts           Set Size: 2 pcs, 4 pcs, 6 pcs                  1
+p-sneakers         Urban Canvas Comfort Sneakers         Apparel         55000  18     —               FOOTWEAR            Kigali Streetwear           Size 39–44; Color White, Black, Olive          1
+p-smartwatch       Core-Link Pro Smartwatch              Electronics     89000  9      HOT SELLER      WEARABLES           Kigali Tech Store           Band: Black Silicone, Steel                    1
+p-coffee           Gorilla Mountain Arabica Coffee       Fresh Produce   12500  48     FRESH ARRIVAL   KIVU REGION         Kivu Highlands Co-op        Grind Whole Bean/Ground; Weight 250g/500g/1kg  0
+p-basket           Agaseke Peace Basket                  Home            28000  15     —               HANDCRAFTED         Gahaya Links Collective     Size Small, Medium, Large                      0
+p-serum            Radiance Vitamin C Serum              Beauty          18500  31     SALE -15%       SKINCARE            Glow Rwanda Beauty          Size 30ml, 50ml                                1
+p-iphone           iPhone 15 Pro Max Case Bundle         Electronics     35000  2      —               ACCESSORIES         Kigali Tech Store           Color Clear, Matte Black, Blue                 0
+p-tea              Rwandan Green Tea Sampler             Fresh Produce    9500  40     —               NORTHERN PROVINCE   Mulindi Tea Estate          none                                           0
+p-dress            Kitenge Midi Wrap Dress               Apparel         42000  7      —               READY-TO-WEAR       Inzozi Fashion House        Size S, M, L, XL                               0
+p-speakers         SoundMaster Portable Speaker          Electronics     67500  11     HOT SELLER      AUDIO               Kigali Tech Store           Color Charcoal, Teal                           0
+p-honey            Organic Wildflower Honey 500g         Fresh Produce    7800  55     —               WESTERN PROVINCE    Nyungwe Apiaries            none                                           0
+
+LOW STOCK in catalog: only p-iphone (stock 2). isLowStock threshold is stock<=5.
+Dashboard "Low Stock Items" KPI = count of isLowStock → 1.
+Alert copy still says "Restock: iPhone 15 Pro Max Case — Only 2 units left".
+
+SALE -15% is a BADGE STRING ONLY. Price is NOT discounted in code.
+
+All products isActive: true by default.
+
+Image URLs: https://images.unsplash.com/photo-...?w=800&q=80
+Inventory "add new" uses w=400 of the smartwatch photo:
+  https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&q=80
+
+Product descriptions (verbatim):
+  p-headphones: Over-ear wireless headphones with 40mm drivers, 30-hour battery life, and a foldable design built for Kigali commutes.
+  p-ceramic-set: Hand-finished ceramic cups and carafe for four. Perfect for morning coffee or hosting guests in Remera.
+  p-sneakers: Breathable canvas sneakers with cushioned soles. Everyday comfort for city walking and weekend markets.
+  p-smartwatch: Fitness tracking, heart-rate monitor, and smartphone notifications with a 7-day battery and water resistance.
+  p-coffee: Single-origin Arabica from the shores of Lake Kivu. Medium roast with notes of chocolate and citrus.
+  p-basket: Traditional woven Agaseke basket made by women artisans. Ideal as a gift or home accent.
+  p-serum: Lightweight brightening serum formulated for tropical climates. Absorbs quickly under sunscreen.
+  p-iphone: Shock-absorbent case with tempered glass and charging cable — ready for busy Remera days.
+  p-tea: Three estate blends in a gift-ready tin. Smooth, floral notes from Rwanda’s highland gardens.
+  p-dress: Bold Kitenge print wrap dress with adjustable fit. Perfect for markets, office Fridays, and celebrations.
+  p-speakers: IPX7 waterproof Bluetooth speaker with 20W output and 16-hour playtime for lakeside weekends.
+  p-honey: Raw, unfiltered honey from Nyungwe forest margins. Rich gold color with floral sweetness.
+
+Gallery extra Unsplash URLs (for completeness):
+  p-headphones: photo-1484704849700-f032a568e944, photo-1546435770-a3e426bf472b
+  p-ceramic-set: photo-1495474472287-4d71bcdd2085
+  p-sneakers: photo-1542291026-7eec264c27ff
+  p-smartwatch: photo-1579586337278-3befd40fd17a
+  p-serum: photo-1570194065650-d99fb4b38b17
+
+===============================================================================
+10. MOCK ORDERS — lib/core/mock_data/orders_mock.dart
+===============================================================================
+
+abstract final class OrdersMock
+
+static final List<CustomerOrder> orders  — NOT const, because createdAt uses DateTime.now()
+
+id         guest               phone              location                 landmark                                  fee    status          pay            extra
+IKY-9842   Aline Uwase         +250 788 123 456   Remera, Gasabo           Near MTN Centre, Chez Lando road          2000   pending         MTN MoMo       1× Core-Link Pro Smartwatch 89000
+                                                                                                                      createdAt now - 1h20m
+IKY-9838   Eric Niyonsenga     +250 72 555 019    Nyamirambo, Nyarugenge   Opposite Nyamirambo Adventist Church      2500   processing      Airtel Money   sneakers 55000 + 2× honey 7800
+                                                                                                                      createdAt now - 3h
+IKY-9823   Diane Mukamana      +250 78 901 234    Gatenga, Kicukiro        KK 15 Ave, blue gate                      2000   shipped         Visa / Card    ceramic set 32500
+                                                                                                                      createdAt now - 8h
+IKY-9811   Jean Paul K.        +250 73 222 110    Kimironko, Gasabo        Kimironko Market parking                  1500   delivered       MTN MoMo       3× coffee 12500 + headphones 45000
+                                                                                                                      createdAt now - 1d4h
+IKY-9805   Clarisse Ingabire   +250 78 444 778    Kacyiru, Gasabo          Near Ministry of Finance                  2000   issueReported   MTN MoMo       case bundle 35000
+                                                                                                                      ticket: "Guest reports missing charger cable in case bundle."
+                                                                                                                      createdAt now - 1d10h
+IKY-9798   Patrick Habimana    +250 72 333 901    Niboye, Kicukiro         Apartment B3, first floor                 2000   pending         Airtel Money   speaker 67500
+                                                                                                                      createdAt now - 45m
+IKY-9780   Grace Iradukunda    +250 78 112 009    Muhima, Nyarugenge       UTC building, reception desk              1500   delivered       Visa / Card    2× serum 18500 + dress 42000
+                                                                                                                      createdAt now - 2d
+IKY-9772   Samuel Bizimana     +250 73 880 441    Remera, Gasabo           Amahoro Stadium gate A                    2000   processing      MTN MoMo       basket 28000 + tea 9500
+                                                                                                                      createdAt now - 5h
+
+pendingCount = 2 (9842, 9798)
+completedCount = delivered only = 2 (9811, 9780)
+byStatus(null) returns all.
+
+Weekly revenue (const):
+  weeklyRevenueRwf = [820000, 1100000, 950000, 1400000, 1250000, 1680000, 1520000]
+  weekLabels = Mon Tue Wed Thu Fri Sat Sun
+  todayRevenueRwf = last value = 1520000
+  Dashboard KPI badge "+12.5%" is HARDCODED, not computed from this series.
+
+Shopper checkout delivery is always CartState.deliveryFeeRwf = 2000.
+Vendor mock orders use 1500 / 2000 / 2500.
+
+NOTE: shopper-placed orders are NEVER appended to this list.
+
+===============================================================================
+11. SHOPPER UI — LANDING SCREEN
+===============================================================================
+
+File: lib/features/shop/screens/landing_screen.dart
+class LandingScreen extends StatefulWidget
+
+Local state:
+  _searchController   TextEditingController
+  _scrollController   ScrollController
+  _query              String  (live from onChanged)
+  _favorites          Set<String> of product ids
+                      IN-MEMORY, LANDING ONLY, NOT shared with PDP, NOT persisted
+
+dispose: both controllers.
+
+_filtered(category):
+  ProductsMock.byCategory(category)
+  if _query empty return that
+  else name.toLowerCase.contains OR vendorName.toLowerCase.contains
+  Does NOT search category text. Does NOT call ProductsMock.search.
+
+_pickLocation(nav):
+  showModalBottomSheet
+  isScrollControlled: true
+  shape: RoundedRectangleBorder vertical top radius 16
+  StatefulBuilder inside
+  District DropdownButtonFormField initialValue, items RwandaLocations.districtNames
+  onChanged district → sector = sectorsFor(v).first
+  Sector dropdown: if current sector not in options, use first
+  Confirm ElevatedButton → nav.setLocation + Navigator.pop
+  Padding: 20 all sides + MediaQuery.paddingOf.bottom on bottom
+
+Location on landing is DISPLAY + this picker only.
+Checkout has ITS OWN district/sector fields, NOT prefilled from NavigationState.
+
+_openProduct:
+  _scrollToTop(); Navigator.push ProductDetailScreen(productId: product.id)
+
+build:
+  watch NavigationState and CartState
+  width = MediaQuery.sizeOf.width
+  isDesktop = width >= kDesktopBreakpoint (900)
+  products = _filtered(nav.selectedCategory)
+  crossAxisCount = productCrossAxisCount(width)          // UNCOMMITTED
+  cardAspectRatio = productCardAspectRatio(width)        // UNCOMMITTED
+
+Scaffold backgroundColor: Colors.transparent
+body: ImigongoBackground → SafeArea → Column:
+  _Header
+  Expanded → Row:
+    if isDesktop: SizedBox width 240 → _DesktopFilters
+    Expanded → CustomScrollView(controller: _scrollController) slivers...
+  AppFooter
+
+----- _Header -----
+Container color surfaceLowest, padding 24/16 horizontal, 12 vertical.
+
+Row:
+  Wordmark Text 'IKAYI MART'
+    titleSmall copyWith color primaryOrange, w800,
+    fontSize isDesktop ? 20 : 18, letterSpacing 0.6
+
+  DESKTOP:
+    SizedBox 24
+    Expanded _SearchField(showCategoryPrefix: true)
+    SizedBox 16
+    InkWell onLocation, radius 8, padding 8x4
+      Icon location_on primaryOrange size 20
+      Column:
+        'SELECT DISTRICT/SECTOR'  labelLarge fontSize 9
+        locationLabel titleSmall fontSize 13
+
+  MOBILE:
+    Spacer
+    IconButton tooltip 'Search' onPressed: () {}   // DEAD — real search is row below
+      icon Icons.search
+
+  ALWAYS:
+    IconButton tooltip 'Cart'
+      Badge isLabelVisible: cartCount > 0, bg primaryOrange, label '$cartCount'
+      child shopping_cart_outlined
+      onCart: if cart empty → SnackBar 'Your cart is empty'
+              else _scrollToTop + push CheckoutScreen
+      THERE IS NO CART DRAWER AND NO CART PAGE.
+
+    IconButton tooltip 'Vendor dashboard'
+      storefront_outlined
+      onVendor: _scrollToTop + nav.setMode(AppMode.vendor)
+
+  MOBILE extra row (SizedBox 8 then Row):
+    Expanded _SearchField (no category prefix)
+    SizedBox 8
+    OutlinedButton.icon 'Location'
+      minSize 0x48, padding horizontal 12
+      side borderSubtle, foreground onSurface
+      icon location_on_outlined primaryOrange size 18
+
+----- _SearchField -----
+TextField controller + onChanged
+hint: showCategoryPrefix ? 'Search for items...' : 'Search across Rwanda...'
+
+prefix if showCategoryPrefix (DESKTOP — FAKE UI, NOT TAPPABLE):
+  Row mainAxisSize min:
+    SizedBox 12
+    Text 'All Categories'
+    Icon expand_more size 18
+    SizedBox 8
+    SizedBox height 24 VerticalDivider width 1 thickness 1
+    SizedBox 4
+    Icon search size 20
+else: Icon search
+
+suffix if showCategoryPrefix:
+  Padding 6 → CircleAvatar bg primaryOrange, Icon search white size 18
+  NOT a submit button. Filtering is live onChanged. No debounce.
+
+----- _CategoryPills (mobile only, !isDesktop sliver) -----
+SizedBox height 52
+ListView.separated horizontal
+padding horizontal 16 vertical 8
+itemCount ProductsMock.categories.length
+separator SizedBox width 8
+ChoiceChip label = cat, selected = cat == selected
+selectedColor primaryOrange
+labelStyle white if active else onSurface, w600
+backgroundColor surfaceHigh
+showCheckmark: false
+onSelected → onSelected(cat) → nav.setCategory
+
+----- Desktop section header slivers -----
+SliverPadding LRTB 24/8/24/8 (desktop) or 16/8/16/8 (mobile)
+Row:
+  Expanded Text:
+    desktop: 'Featured Marketplace'
+    mobile:  'New Arrivals'
+    style headlineMedium
+  Text 'VIEW ALL →'
+    titleSmall copyWith color primaryOrange fontSize 13
+    NOT A BUTTON. DOES NOTHING.
+
+Desktop only extra sliver:
+  padding horizontal 24
+  Text 'Showing ${products.length} items found in Rwanda'
+    bodyMedium color secondary
+
+----- Grid -----
+SliverPadding all 24 desktop / 16 mobile
+SliverGrid SliverGridDelegateWithFixedCrossAxisCount
+  crossAxisCount from helper
+  mainAxisSpacing 16, crossAxisSpacing 16
+  childAspectRatio from helper
+delegate childCount products.length
+ProductCard:
+  isFavorite: _favorites.contains(product.id)
+  onFavorite: toggle id in setState
+  onTap: _openProduct
+
+----- _DesktopFilters (desktop left column) -----
+cats = ProductsMock.categories.where((c) => c != 'All')
+Material color surfaceLowest, padding 20
+Text 'Categories' titleSmall
+then each cat InkWell radius 8, padding vertical 10
+  Icon radio_button_checked (orange) or radio_button_off (secondary) size 20
+  SizedBox 12
+  Expanded Text cat fontSize 14
+TextButton 'Show all' → onCategory('All')
+
+If selectedCategory is 'All', NO radio looks selected.
+Clicking an already-selected category does not deselect; use Show all.
+
+----- _PromoBanner (mobile only, after grid) -----
+SliverPadding fromLTRB 16,0,16,24
+Container padding 20, color primaryOrange, radius 16
+Row:
+  Expanded Column start:
+    Text 'Fast Delivery Across Kigali. Order now and get it in 60 minutes.'
+      titleSmall white height 1.35
+    SizedBox 12
+    TextButton 'SHOP NOW'
+      bg white, fg primaryOrange, padding 16x10, radius 24, w700
+      onShop → nav.setCategory('All')
+  Icon delivery_dining white size 48
+
+NOT shown on desktop.
+
+===============================================================================
+12. PRODUCT CARD
+===============================================================================
+
+File: lib/features/shop/widgets/product_card.dart
+
+class ProductCard extends StatelessWidget
+  required product, onTap
+  optional onFavorite
+  isFavorite default false
+
+Material color surfaceLowest, radius 12
+InkWell onTap, radius 12
+Ink decoration:
+  color surfaceLowest, radius 12, border borderSubtle
+  boxShadow: cardShadow blur 8 offset (0, 2)
+
+Column crossAxis start:
+  Expanded → Stack fit expand:
+    ClipRRect top radius 12
+      Image.network product.imageUrl BoxFit.cover
+      errorBuilder: Container surfaceHigh, centered image_outlined secondary
+      NO loadingBuilder, NO cacheWidth, NO fadeIn
+
+    if badge != null: Positioned top 8 left 8
+      Container padding 8x4, color primaryOrange, radius 6
+      Text badge white fontSize 10 w700 letterSpacing 0.4
+      Raw strings used: HOT SELLER, FRESH ARRIVAL, SALE -15%
+
+    Positioned top 8 right 8
+      Material white CircleBorder
+      InkWell customBorder CircleBorder onTap: onFavorite
+      Padding 6
+      Icon favorite or favorite_border size 18
+        color primaryOrange if favorite else onSurface
+      If onFavorite is null (PDP recommended), heart STILL RENDERS.
+      Tap likely no-ops / may swallow parent tap.
+
+  Padding fromLTRB 12,10,12,12
+    Column start:
+      Text name maxLines 2 overflow ellipsis
+        titleSmall fontSize 14 height 1.3
+      if originLabel != null:
+        SizedBox 4
+        Text originLabel maxLines 1 overflow ellipsis   // UNCOMMITTED
+          labelLarge color secondary fontSize 10
+      SizedBox 8
+      Text formatRwf(priceRwf, suffix: true)
+        maxLines 1 overflow ellipsis                     // UNCOMMITTED
+        titleSmall color primaryOrange fontSize 16 w700 letterSpacing -0.2
+
+Stock, vendor, variants are NOT on the card.
+
+===============================================================================
+13. PRODUCT DETAIL SCREEN
+===============================================================================
+
+File: lib/features/shop/screens/product_detail_screen.dart
+
+class ProductDetailScreen extends StatefulWidget
+  required String productId
+
+State:
+  int _imageIndex = 0
+  Map<String, String> _selectedVariants = {}
+
+initState:
+  product = ProductsMock.byId(widget.productId)
+  for each variant with options.isNotEmpty:
+    _selectedVariants[v.name] = v.options.first   // FIRST option preselected
+
+If product == null:
+  Scaffold AppBar title 'Product', body Center 'Product not found'
+
+watch CartState
+isDesktop = width >= 900
+images = product.allImages
+recommended = _recommendedProducts(product)
+
+----- Gallery column -----
+AspectRatio 1, ClipRRect radius 16
+Image.network images[_imageIndex.clamp(0, length-1)] cover
+error: surfaceHigh + image_outlined size 48
+
+If images.length > 1:
+  SizedBox 12
+  SizedBox height 72 ListView.separated horizontal
+  separator 8
+  each thumb: GestureDetector setState _imageIndex
+    Container width 72
+    border radius 8
+    border: selected ? primaryOrange width 2 : borderSubtle width 1
+    ClipRRect radius 7 Image.network cover
+    error: ColoredBox surfaceHigh
+
+----- Details column -----
+1. Category pill: padding 10x4, surfaceHigh, radius 20
+   Text product.category.toUpperCase()
+   labelLarge fontSize 11 color primaryDeep
+
+2. SizedBox 12
+   Text name displayMedium
+
+3. SizedBox 8
+   Text formatRwf(priceRwf, suffix: true)
+   displayMedium copyWith color primaryOrange fontSize 28
+
+4. SizedBox 16
+   For each variant:
+     Padding bottom 16
+     Text variant.name.toUpperCase() labelLarge
+     SizedBox 8
+     Wrap spacing 8 runSpacing 8
+     ChoiceChip per option
+       selected = _selectedVariants[variant.name] == option
+       showCheckmark false
+       selectedColor primaryOrange
+       labelStyle white if selected else onSurface, w600
+       onSelected → setState map[name] = option
+
+5. _InfoCard title 'DESCRIPTION' body product.description
+
+6. SizedBox 12
+   _InfoCard title 'DELIVERY & WARRANTY'
+     body: '${product.deliveryNote}\n\n${product.warrantyNote}'
+
+7. SizedBox 12
+   Container width infinity padding 14
+     color surfaceLow, radius 12, border borderSubtle
+     Row: Icon storefront primaryOrange, SizedBox 10,
+          Expanded Text 'Sold by: ${product.vendorName}' titleSmall
+
+8. SizedBox 24
+   LayoutBuilder:
+     horizontal = constraints.maxWidth >= 480
+     Three buttons, each minSize fromHeight 56, padding horizontal 8:
+
+     BUY NOW ElevatedButton:
+       addProduct(product, selectedVariants: Map.of(_selectedVariants))
+       push CheckoutScreen
+       DOES NOT check inStock. Always quantity 1. No qty stepper.
+
+     ADD TO CART OutlinedButton:
+       addProduct same
+       SnackBar content '${product.name} added to cart'
+       action SnackBarAction label 'Checkout' textColor white
+         → push CheckoutScreen
+
+     CHAT TO BARGAIN OutlinedButton:
+       Text 'CHAT TO BARGAIN' textAlign center
+       SnackBar 'Chat to bargain opens soon (mock)'
+
+     if horizontal: Row of three Expanded + SizedBox 12 between
+     else: Column stretch, SizedBox 12 between
+
+----- _InfoCard -----
+Container width infinity padding 16
+color surfaceLowest, radius 12, border borderSubtle
+Text title labelLarge, SizedBox 8, Text body bodyMedium
+
+----- AppBar (UNCOMMITTED compact chrome) -----
+compactChrome = width < kPhoneBreakpoint (400)
+leadingWidth: compactChrome ? 56 : 140
+leading:
+  compact: IconButton arrow_back, tooltip 'Back to Shop', Navigator.pop
+  else: TextButton.icon arrow_back + 'Back to Shop'
+        foregroundColor onSurface
+actions:
+  IconButton cart-as-checkout (same empty SnackBar / push Checkout)
+  Badge cart.itemCount
+
+Scaffold backgroundColor transparent
+body ImigongoBackground
+SingleChildScrollView padding 32 desktop / 16 mobile
+Center ConstrainedBox maxWidth 1100
+Column stretch:
+  if isDesktop: Row start: Expanded gallery, SizedBox 40, Expanded details
+  else: gallery, SizedBox 24, details
+  if recommended.isNotEmpty:
+    SizedBox 40
+    Text 'RECOMMENDED' labelLarge
+    SizedBox 16
+    LayoutBuilder (UNCOMMITTED GridView, was 3-up Row):
+      cols = productCrossAxisCount(constraints.maxWidth, max: 3)
+      gap = maxWidth >= 600 ? 16.0 : 12.0
+      GridView.builder
+        shrinkWrap true
+        physics NeverScrollableScrollPhysics
+        itemCount recommended.length
+        gridDelegate FixedCrossAxisCount
+          crossAxisCount cols, main/cross spacing gap
+          childAspectRatio productCardAspectRatio(constraints.maxWidth)
+        ProductCard product: item, onTap push ProductDetailScreen(item.id)
+        NO onFavorite, NO isFavorite
+
+----- _recommendedProducts(product) -----
+sameCategory = byCategory(product.category).where id != product.id
+if sameCategory.length >= 3 → take 3
+else extras = all products where id != product.id and not already in sameCategory
+return [...sameCategory, ...extras].take(3)
+
+Catalog order means extras fill from the front of the 12-item list.
+
+Tapping recommended PUSHES another PDP (does not replace). Back pops one.
+No footer on this screen.
+No stock display despite product.stock.
+No share.
+No related-vendor navigation.
+
+PREVIOUS recommended layout (committed, replaced): forced 3-column Row of
+Expanded ProductCards with height = cardWidth / aspectRatio. Broke on narrow
+screens. That is what the uncommitted PDP diff fixes.
+
+===============================================================================
+14. CHECKOUT SCREEN
+===============================================================================
+
+File: lib/features/shop/screens/checkout_screen.dart
+
+enum _PaymentMethod { mtnMomo, airtelMoney, visaCard }  // private, file-local
+
+class CheckoutScreen extends StatefulWidget
+
+State:
+  _formKey GlobalKey<FormState>
+  _nameController, _phoneController, _landmarkController
+  String? _district     // STARTS NULL — not from NavigationState
+  String? _sector
+  _PaymentMethod _payment = mtnMomo
+  bool _placing = false
+
+dispose all three controllers.
+
+If cart.isEmpty:
+  Scaffold AppBar 'Checkout'
+  Center Column min:
+    Icon shopping_bag_outlined size 48
+    SizedBox 12
+    Text 'Your cart is empty'
+    SizedBox 16
+    ElevatedButton 'Continue shopping' → Navigator.pop
+
+----- Form -----
+Title: 'CHECKOUT — Step 2 of 2'  headlineMedium
+Subtitle: 'Guest checkout — no account needed'  bodyMedium secondary
+SizedBox 24
+
+TextFormField Full Name
+  validator: null or trim empty → 'Required'
+
+SizedBox 12
+TextFormField Phone Number
+  keyboardType phone
+  hint '+250 7XX XXX XXX'
+  helperText 'Required for MoMo & SMS guest tracking'
+  validator:
+    empty → 'Phone is required'
+    v.replaceAll(RegExp(r'\D'), '').length < 10
+      → 'Enter a valid Rwanda phone number'
+    (Rwanda numbers with +250 are typically 12 digits including country code)
+
+SizedBox 12
+DropdownButtonFormField District
+  initialValue _district
+  items RwandaLocations.districtNames
+  onChanged: setState _district = v; _sector = null
+  validator null → 'Select a district'
+
+SizedBox 12
+DropdownButtonFormField Sector
+  initialValue sectors.contains(_sector) ? _sector : null
+  items sectorsFor(_district) or []
+  onChanged: disabled if _district == null else setState _sector = v
+  validator null → 'Select a sector'
+
+SizedBox 12
+TextFormField Landmark / Street
+  hint 'e.g. Near MTN Centre, Remera'
+  validator empty trim → 'Required'
+
+SizedBox 24
+Text 'Payment method' titleSmall
+SizedBox 12
+_PaymentTile × 3:
+  'MTN Mobile Money (MoMo)' / 'Pay with your MTN MoMo wallet' / phone_android
+  'Airtel Money' / 'Pay with Airtel Money' / smartphone
+  'Visa / Bank Card' / 'Debit or credit card' / credit_card
+
+_PaymentTile:
+  Material surfaceLowest radius 12
+  InkWell
+  Container padding 14, radius 12
+  border: selected ? primaryOrange width 2 : borderSubtle width 1
+  Row: icon (orange or secondary), 12, Expanded titleSmall + subtitle bodyMedium
+       secondary fontSize 12, radio_button_checked/off
+
+SELECTION IS VISUAL ONLY. Not sent anywhere. Not shown on confirmation modal.
+
+----- _OrderSummary -----
+Material elevation 8, color surfaceLowest
+SafeArea top: false
+Padding 16
+Column min stretch:
+  'Order summary' titleSmall
+  SizedBox 12
+  For each cart item:
+    Padding bottom 8
+    Row: Expanded Text '${product.name} × ${quantity}' maxLines 1 ellipsis
+         Text formatRwf(lineTotal, suffix: true)
+    NO variant text. NO qty controls. NO remove.
+  Divider
+  Row Expanded 'Delivery' + formatRwf(CartState.deliveryFeeRwf, suffix: true)
+  SizedBox 8
+  Row 'Grand total' titleSmall + formatRwf(grandTotal) titleSmall primaryOrange
+  SizedBox 16
+  ElevatedButton
+    onPressed: placing ? null : onPlaceOrder
+    child: placing ? CircularProgressIndicator 22x22 stroke 2 white
+           : 'PLACE ORDER (TOTAL: ${formatRwf(grandTotal, suffix: true)})'
+
+Layout:
+  Scaffold transparent, AppBar title 'Checkout'
+  body ImigongoBackground
+  DESKTOP (>=900): Padding 32, Row start:
+    Expanded flex 3 SingleChildScrollView(form)
+    SizedBox 32
+    SizedBox width 360 summary
+  MOBILE: Column:
+    Expanded SingleChildScrollView padding 16 form
+    summary pinned at bottom
+
+----- _placeOrder -----
+  if !form.validate return
+  if _district == null || _sector == null
+    SnackBar 'Select district and sector'  (also covered by validators)
+    return
+  setState _placing = true
+  await Future.delayed(Duration(milliseconds: 600))  // FAKE NETWORK
+  if (!mounted) return
+  code = '#IKY-${1000 + Random().nextInt(9000)}'   // #IKY-1000 … #IKY-9999
+  totalLabel = formatRwf(cart.grandTotalRwf, suffix: true)
+  cart.clear()
+  setState _placing = false
+  await GuestTrackingModal.show(context, trackingCode: code, totalRwfLabel: totalLabel)
+
+Order is NOT appended to OrdersMock.
+Vendor board NEVER sees shopper orders.
+Name/phone/address/payment are DISCARDED.
+dart:math Random is used.
+
+===============================================================================
+15. GUEST TRACKING MODAL
+===============================================================================
+
+File: lib/features/shop/widgets/guest_tracking_modal.dart
+
+class GuestTrackingModal extends StatelessWidget
+  required trackingCode, totalRwfLabel
+
+static Future<void> show(context, {required trackingCode, required totalRwfLabel})
+  showDialog barrierDismissible: false
+
+AlertDialog shape radius 16
+title Column:
+  Container 64x64 BoxDecoration color 0x1AFF5722 (primaryOrange 10%) circle
+  Icon check_circle primaryOrange size 40
+  SizedBox 16
+  Text 'Order Placed!' headlineMedium center
+
+content Column min:
+  Text 'Your guest tracking code is ready. Use it to follow delivery — no account required.'
+    center, bodyMedium secondary
+  SizedBox 20
+  Container infinity padding 16, surfaceLow, radius 12, border borderSubtle
+    'GUEST TRACKING ID' labelLarge
+    SizedBox 8
+    SelectableText trackingCode  displayMedium primaryOrange fontSize 28
+    SizedBox 8
+    Text 'Total paid: $totalRwfLabel' bodyMedium
+    SizedBox 12
+    Text 'Track at ikayi.rw/track/$trackingCode'
+      bodyMedium tertiary fontSize 12
+
+actionsAlignment center
+actions:
+  TextButton.icon Copy code
+    Clipboard.setData(ClipboardData(text: trackingCode))
+    SnackBar 'Tracking code copied'
+  ElevatedButton 'Back to Shop' minSize 140x48
+    Navigator.pop (dialog)
+    Navigator.popUntil((route) => route.isFirst)
+
+THERE IS NO /track ROUTE.
+CNAME domain is mart.ikayi.app, NOT ikayi.rw.
+Clipboard via flutter/services.dart.
+
+===============================================================================
+16. VENDOR SHELL — lib/main.dart
+===============================================================================
+
+class VendorShell extends StatelessWidget
+
+watch NavigationState
+isDesktop = width >= 900
+
+body switch nav.vendorSection:
+  dashboard  → VendorDashboardScreen
+  inventory  → InventoryScreen
+  orders     → OrderManagementScreen
+  bmsSync    → _PlaceholderSection
+                 title 'BMS Sync'
+                 message 'SKU sync with your Business Management System is connected (mock).'
+  support    → _PlaceholderSection
+                 title 'Support'
+                 message 'Guest support tickets appear under Order Management → Issue Reported.'
+
+Scaffold backgroundColor transparent
+appBar: isDesktop ? null : AppBar
+  title 'Vendor Central'
+  actions: TextButton 'Shop' → setMode(shopper)
+drawer: isDesktop ? null : Drawer → SafeArea → VendorSidebar
+  onSelect: nav.setVendorSection + Navigator.pop
+body Row:
+  if isDesktop: VendorSidebar(selected, onSelect: nav.setVendorSection)
+  Expanded ImigongoBackground Column:
+    if isDesktop: Container height 64 padding horizontal 24
+      decoration surfaceLowest, bottom border borderSubtle
+      Row:
+        Spacer
+        TextButton.icon 'Back to Storefront' storefront_outlined → setMode(shopper)
+        SizedBox 8
+        CircleAvatar radius 16 bg primaryOrange
+          Text 'JP' white fontSize 12 w700
+        SizedBox 8
+        Text 'Jean Paul K.' titleSmall
+    Expanded KeyedSubtree(key: ValueKey(nav.vendorSection), child: body)
+    AppFooter
+
+_PlaceholderSection:
+  Center ConstrainedBox maxWidth 420
+  Card padding 24 Column min:
+    Icon construction_outlined size 40 primaryOrange
+    SizedBox 12
+    Text title headlineMedium
+    SizedBox 8
+    Text message center bodyMedium secondary
+
+===============================================================================
+17. VENDOR SIDEBAR
+===============================================================================
+
+File: lib/features/vendor/widgets/vendor_sidebar.dart
+
+class VendorSidebar
+  required selected (VendorSection), onSelect
+  compact default false   // compact IS NEVER PASSED TRUE anywhere
+
+static const _items = <(VendorSection, String, IconData)>[
+  (dashboard,  'Dashboard', dashboard_outlined)
+  (inventory,  'Inventory', inventory_2_outlined)
+  (orders,     'Orders',    receipt_long_outlined)
+  (bmsSync,    'BMS Sync',  sync_outlined)
+  (support,    'Support',   support_agent_outlined)
+]
+
+ImigongoBackground variant light, backgroundColor surfaceLowest
+  UNCOMMITTED: patternOpacity: 0.07 WAS REMOVED so default 0.85 applies
+SizedBox width compact ? 72 : 240
+Column stretch:
+  Padding LRTB compact 12/24/12/8 else 20/24/20/8
+  compact: Icon storefront primaryOrange
+  else Column start:
+    'IKAYI MART' titleSmall primaryOrange w800 letterSpacing 0.5
+    SizedBox 2
+    'VENDOR CENTRAL' labelLarge secondary fontSize 10
+
+  SizedBox 16
+  each item Padding horizontal 12 vertical 2
+    ClipRRect radius 12
+    Material transparent
+    InkWell onTap onSelect(section)
+    Stack:
+      if active: Positioned.fill ImigongoBackground
+        variant navActive, patternOpacity 0.2, backgroundColor primaryLight
+        child SizedBox.expand
+      Padding horizontal compact 12 else 14, vertical 12
+      Row:
+        Icon size 22 color active ? primaryOrange : secondary
+        if !compact: SizedBox 12, Expanded Text label
+          w600 onSurface if active else w500 secondary
+
+  Spacer
+  if !compact: Padding 16
+    Container padding 12, surfaceLow, radius 12
+    Row:
+      CircleAvatar radius 18 primaryOrange
+        Text 'KT' labelLarge white fontSize 11
+      SizedBox 10
+      Expanded Column start:
+        'Kigali Tech Store' titleSmall fontSize 13
+        'Verified Vendor' bodyMedium fontSize 11 color success
+      Icon settings_outlined size 18   // NO onTap
+
+IDENTITY MISMATCH:
+  Sidebar shop = Kigali Tech Store / KT
+  Desktop top bar person = Jean Paul K. / JP
+  Jean Paul K. is ALSO a mock CUSTOMER on order IKY-9811
+
+===============================================================================
+18. VENDOR DASHBOARD
+===============================================================================
+
+File: lib/features/vendor/screens/vendor_dashboard_screen.dart
+StatelessWidget. SingleChildScrollView padding 24.
+
+Header LayoutBuilder:
+  title 'Dashboard Overview' displayMedium
+  status Row min: Text 'Store Status', SizedBox 8,
+         Switch(value: true, onChanged: (_) {})   // NON-FUNCTIONAL, always on
+         Text 'Online' titleSmall primaryOrange
+  if maxWidth < 520: Column start title then status
+  else Row Expanded title + status
+
+SizedBox 20
+KPI GridView.count shrinkWrap never-scroll
+  cols: >=900 → 4; >=600 → 2; else 1
+  main/cross spacing 16, childAspectRatio 1.6
+  four _KpiCard:
+    1. "Today's Revenue (RWF)"  formatRwf(OrdersMock.todayRevenueRwf) NO suffix
+       → "RWF 1,520,000"   badge '+12.5%'  badgeColor tertiary
+    2. 'Pending Orders'  '${pendingCount}'="2"   badge 'Urgent'    error
+    3. 'Low Stock Items' '$lowStock'="1"         badge 'Critical'  error
+       lowStock = ProductsMock.products.where(isLowStock).length
+    4. 'Completed Orders' '${completedCount}'="2" badge 'This Week' secondary
+
+_KpiCard:
+  Container padding 16, surfaceLowest, radius 12, border borderSubtle
+  shadow cardShadow blur 8 offset 0,2
+  Column start: title bodyMedium secondary, Spacer,
+    value headlineMedium w700, SizedBox 8,
+    badge container padding 8x4, badgeColor alpha 0.12, radius 6
+    Text badge color badgeColor fontSize 11 w700
+
+SizedBox 24
+Revenue Trends card:
+  Container infinity padding 20, surfaceLowest, radius 12, border
+  Row:
+    Expanded Column:
+      'Revenue Trends' titleSmall
+      'Daily performance comparison against previous week.' bodyMedium secondary
+    ChoiceChip '7 Days' selected true selectedColor primaryOrange
+      labelStyle white, onSelected: (_) {}   // NO OTHER RANGES
+  SizedBox 24
+  SizedBox height 180 CustomPaint _RevenueChartPainter
+    values weeklyRevenueRwf, maxValue = max of series
+  SizedBox 8
+  Row spaceBetween weekLabels as bodyMedium fontSize 12
+
+_RevenueChartPainter:
+  if values empty return
+  4 horizontal grid lines borderSubtle stroke 1 at y = height * i/3  (i=0..3)
+  Path: x = width * i / (length-1)
+        y = height - (values[i]/maxValue)*height*0.9
+  linePaint primaryDeep stroke 3 StrokeCap.round
+  NO area fill, NO tooltips, NO y-axis labels, NO points
+
+SizedBox 24
+LayoutBuilder:
+  stack if maxWidth < 800
+  _AlertsBlock and _TopSellersBlock
+  stack: Column alerts, 16, topSellers
+  else Row start Expanded each + 16
+
+_AlertsBlock — STATIC, not computed from live filters, NOT tappable:
+  Container padding 16, surfaceLowest, radius 12, border
+  'Urgent Actions' titleSmall
+  _AlertRow error_outline error
+    'Orders Requiring Dispatch'
+    'New Order #IKY-9842 — Shipping SLA expires in 2h'
+  _AlertRow inventory_2_outlined primaryDeep
+    'Low Stock Warnings'
+    'Restock: iPhone 15 Pro Max Case — Only 2 units left'
+  _AlertRow chat_bubble_outline tertiary
+    'Unresolved Customer Inquiry'
+    'Query regarding missing charger cable'
+  icon size 22, title titleSmall fontSize 14, subtitle bodyMedium secondary 12
+  padding bottom 12
+
+_TopSellersBlock:
+  Material surfaceLowest, RoundedRectangleBorder radius 12 side borderSubtle
+  padding 16
+  Row: Expanded 'Top Selling Products' titleSmall
+       Text 'View All' titleSmall primaryOrange fontSize 13  // NOT A BUTTON
+  SizedBox 12
+  ProductsMock.products.take(3)  — FIRST THREE IN CATALOG, NOT by sales
+    headphones, ceramic set, sneakers
+  each Padding vertical 8 Row:
+    ClipRRect radius 8 Image.network 40x40 cover
+      error SizedBox 40x40 ColoredBox surfaceHigh
+    SizedBox 10
+    Expanded Column: name maxLines 1 ellipsis titleSmall 14
+                     category bodyMedium secondary 12
+    Text formatRwf(price, suffix: true) w600
+
+===============================================================================
+19. INVENTORY SCREEN
+===============================================================================
+
+File: lib/features/vendor/screens/inventory_screen.dart
+StatefulWidget
+
+State:
+  String _query = ''
+  String _category = 'All'
+  late List<_InventoryRow> _rows
+
+initState:
+  _rows = ProductsMock.products.map((p) => _InventoryRow(product: p, active: p.isActive))
+
+_InventoryRow { Product product; bool active; }  — NOT Equatable; indexOf uses identity
+
+_filtered:
+  matchesCat = _category == 'All' || product.category == _category
+  matchesQuery = q empty OR name.contains OR id.contains (id treated as SKU)
+  both must match
+
+Toolbar (Wrap spacing 12 runSpacing 12 crossAxis center):
+  SizedBox 260 TextField hint 'Search products / SKU' prefixIcon search
+    onChanged setState _query
+  SizedBox 180 DropdownButtonFormField Category
+    items ALL ProductsMock.categories including All
+  ElevatedButton.icon '+ Add New Product'  (label includes the plus AND icon add)
+    minSize 0x48 padding horizontal 16
+    onPressed _showEditor()
+  Container padding 12x10, surfaceLow, radius 12, border
+    Icon sync success size 18 + Text 'Sync BMS SKU — Connected'  // DECORATIVE
+
+Expanded Container surfaceLowest radius 12 border
+  SingleChildScrollView horizontal
+  ConstrainedBox minWidth: MediaQuery.width - 48
+  DataTable headingRowColor surfaceLow
+  columns: Product, Price, Stock, Active, Actions
+
+Product cell: Row 40x40 ClipRRect image + SizedBox 10 + SizedBox width 180
+  Text name maxLines 2 ellipsis
+Price: formatRwf suffix true
+Stock chip:
+  !inStock → 'Out' error
+  isLowStock → 'Low Stock' primaryDeep
+  else → 'In Stock' success
+  text: '$stockLabel (${p.stock})' color stockColor w600 fontSize 12
+  container padding 8x4, stockColor alpha 0.12, radius 6
+Active: Switch value row.active
+  onChanged: replace _rows[i] with new _InventoryRow(product: p, active: v)
+  Does NOT copy into product.isActive until an edit-save.
+  Shopper catalog NEVER reads this list.
+Actions: IconButton edit_outlined tooltip Edit → _showEditor(existing: row)
+         IconButton delete_outline error tooltip Delete → _rows.remove(row)
+         NO confirm dialog on delete.
+
+----- _showEditor({_InventoryRow? existing}) -----
+Controllers: name (existing name or ''), price (priceRwf toString or ''),
+             stock (stock toString or '10')
+var category = existing?.category ?? 'Electronics'
+
+showDialog StatefulBuilder AlertDialog
+  title: existing == null ? 'Add New Product' : 'Edit Product'
+  content SizedBox width 420 Column min:
+    TextField Name
+    SizedBox 12 TextField Price (RWF) keyboard number
+    SizedBox 12 TextField Stock keyboard number
+    SizedBox 12 DropdownButtonFormField Category
+      items categories where != 'All'
+  actions: TextButton Cancel pop false
+           ElevatedButton Save minSize 120x44 pop true
+
+NO validation. Empty name on add → 'New Product'. price/stock int.tryParse ?? 0.
+
+if saved != true return
+ADD:
+  Product(
+    id: 'p-${DateTime.now().millisecondsSinceEpoch}',
+    name: trim empty ? 'New Product' : nameCtrl.text,   // NOTE: empty check is trim.isEmpty then uses nameCtrl.text NOT trimmed
+    category, priceRwf, stock,
+    imageUrl: smartwatch unsplash w=400,
+    vendorName: 'Kigali Tech Store',   // HARDCODED
+    description: 'Newly added product (mock).',
+  )
+  _rows.insert(0, _InventoryRow(product, active: true))
+
+EDIT:
+  idx = _rows.indexOf(existing)   // identity
+  reconstruct Product keeping id, imageUrl, vendorName, description, badge,
+  originLabel, gallery, variants, isActive: existing.active
+  name: nameCtrl.text  (NOT trimmed on edit)
+  _rows[idx] = new row with same active
+
+Does NOT sync to ProductsMock. Does NOT affect shopper landing.
+
+Title at top: 'Inventory Management' displayMedium
+Padding all 24, Column stretch.
+
+===============================================================================
+20. ORDER MANAGEMENT SCREEN
+===============================================================================
+
+File: lib/features/vendor/screens/order_management_screen.dart
+StatefulWidget
+
+State:
+  OrderStatus? _filter   // null = All
+  late List<CustomerOrder> _orders
+
+initState: _orders = List.of(OrdersMock.orders)
+Shopper checkouts NEVER appear here.
+
+_visible: if _filter == null return _orders else where status == _filter
+
+Filter chips SingleChildScrollView horizontal:
+  tabs = [
+    ('All', null),
+    ('Pending', pending),
+    ('Processing', processing),
+    ('Shipped', shipped),
+    ('Delivered', delivered),
+    ('Issue Reported', issueReported),
+  ]
+  ChoiceChip selected = _filter == status, showCheckmark false
+  selectedColor primaryOrange
+  labelStyle white if selected else onSurface, w600
+  Padding right 8
+
+Expanded Container surfaceLowest radius 12 border
+  nested SingleChildScrollView horizontal AND vertical
+  DataTable headingRowColor surfaceLow
+  columns: Order ID, Guest, Phone, Location, Items, Total, Status, Support
+
+Order ID: Text('#${order.id}')   // mock ids are IKY-9842, displayed #IKY-9842
+Guest: guestName
+Phone: phone
+Location: order.locationLabel  (= sector, district)  — NOT landmark
+Items: join '${productName} ×${quantity}' with ', '
+       SizedBox width 180 maxLines 2 ellipsis
+Total: formatRwf(grandTotalRwf, suffix: true)
+Status: DropdownButton<OrderStatus> value order.status, underline shrink
+  items all OrderStatus.values with s.label
+  onChanged: find index by id, reconstruct CustomerOrder copying ALL fields
+             with new status. Local only.
+Support: IconButton tooltip 'Resolve issue'
+  Icons.support_agent
+  color error if status == issueReported else secondary
+  onPressed _openSupport(order)
+
+_openSupport:
+  replyCtrl TextEditingController (NOT disposed — leak on each open)
+  AlertDialog title 'Support — #${order.id}'
+  content SizedBox width 420 Column min start:
+    Text order.supportTicket ??
+         'No open ticket. Guest may still contact support.'
+    SizedBox 16
+    TextField maxLines 3 label 'Resolution reply'
+      hint 'Write a response to the guest...'
+  actions: TextButton Close pop
+           ElevatedButton 'Send reply' minSize 120x44
+             pop + SnackBar 'Reply sent for #${order.id} (mock)'
+  Does NOT change status. Does NOT store the reply.
+
+No date column. No payment column. No landmark. No order detail page.
+
+Title: 'Order Management' displayMedium
+Padding all 24.
+
+===============================================================================
+21. RESPONSIVE / CHROME CHEAT SHEET
+===============================================================================
+
+Width                 Shopper chrome              Grid cols    Vendor chrome
+>= 900 (desktop)      inline search+location,     4            persistent sidebar 240,
+                      240px category filters,                  no AppBar, top bar 64 JP
+                      "Featured Marketplace"
+600–899 (tablet)      mobile header+pills,        3            Drawer + AppBar
+                      "New Arrivals", promo banner             "Vendor Central"
+400–599 (phone)       same mobile                 2            same drawer
+340–399               same                        2            PDP back = icon only (<400)
+< 340                 same                        1
+
+PDP details actions: 3-across if details pane maxWidth >= 480, else stacked.
+Checkout split: desktop Row at >=900; mobile form+pinned summary.
+Dashboard header wraps status under title if < 520.
+Dashboard alerts stack above top sellers if < 800.
+Dashboard KPI cols: 4 / 2 / 1 at 900 / 600.
+
+Landing _scrollToTop is jumpTo(0), not animate.
+
+===============================================================================
+22. PLATFORM / DEPLOY (FRONTEND-RELEVANT)
+===============================================================================
+
+WEB
+  web/index.html
+    title: IKAYI MART | E-Commerce & Business Marketplace
+    meta description: Fast, 3-step guest checkout e-commerce marketplace and
+                      vendor management platform in Rwanda.
+    apple-mobile-web-app-title: IKAYI MART
+    apple-touch-icon: icons/Icon-192.png
+    favicon.png
+    flutter_bootstrap.js
+  web/manifest.json
+    name/short_name: IKAYI MART
+    start_url: "."
+    display: standalone
+    background_color: #0175C2     // FLUTTER DEFAULT BLUE, not orange
+    theme_color: #0175C2          // SAME
+    orientation: portrait-primary
+    prefer_related_applications: false
+    icons 192/512 + maskable 192/512
+  web/CNAME and root CNAME: mart.ikayi.app
+  web/.htaccess: RewriteEngine On, SPA rewrite to index.html
+  web/_redirects: /*    /index.html   200   (Netlify-style)
+
+  .github/workflows/deploy.yml
+    name: Deploy IKAYI MART to GitHub Pages
+    on push branches: main
+    permissions: contents read, pages write, id-token write
+    concurrency group pages, cancel-in-progress true
+    environment github-pages
+    ubuntu-latest
+    setup-java temurin 17
+    subosito/flutter-action@v2 channel stable
+    flutter pub get
+    flutter build web --release     // NO --base-href
+    configure-pages@v5, upload-pages-artifact@v3 path build/web
+    deploy-pages@v4
+
+ANDROID
+  namespace / applicationId: com.ikayi.ikayi_mart
+  android:label: ikayi_mart   // not "IKAYI MART"
+  MainActivity: empty FlutterActivity, package com.ikayi.ikayi_mart
+  compileSdk/ndk from flutter, Java 17, Kotlin jvmTarget 17
+  minSdk/targetSdk from flutter
+  release signingConfig = debug   // TODO in build.gradle.kts
+  INTERNET permission ONLY in debug and profile manifests, NOT in main.
+    Release Android may FAIL Unsplash images.
+  windowSoftInputMode adjustResize
+  launchMode singleTop
+
+IOS
+  CFBundleDisplayName: Ikayi Mart
+  CFBundleName: ikayi_mart
+  No NSAppTransportSecurity override (HTTPS Unsplash is fine)
+  Orientations: portrait + both landscapes; iPad adds upside-down
+  SceneDelegate + Main storyboard
+
+MACOS
+  DebugProfile.entitlements: sandbox, allow-jit, network.SERVER (not client)
+  Release.entitlements: sandbox ONLY
+  Network images may FAIL on macOS.
+
+WINDOWS: standard Flutter runner. No extra config of note.
+
+NO linux platform folder.
+
+===============================================================================
+23. UNCOMMITTED DIFFS IN DETAIL (WORKING TREE vs HEAD)
+===============================================================================
+
+app_theme.dart
+  Added kTabletBreakpoint=600, kPhoneBreakpoint=400
+  Added productCrossAxisCount and productCardAspectRatio helpers
+  Old comment was "Responsive breakpoint shared across the app (spec: 900px)."
+  New comment "Responsive breakpoints shared across the app."
+
+imigongo_background.dart
+  Doc comment rewritten to describe BMS diamond mesh + nested zigzags
+  light opacity 0.07 → 0.85
+  dark opacity 0.09 → 0.10
+  light stroke onSurface → Color(0xFFE2E8F0)
+  Removed _bandHeight/_zigWidth/_inset and _paintBands + _paintAccentChevrons
+  Added _periodX/_periodY/_nest, _paintChevronMesh, _drawZigzagRows, _horizontalZigzag
+  navActive path kept
+
+landing_screen.dart
+  crossAxisCount = productCrossAxisCount(width)  (was isDesktop ? 4 : 2)
+  cardAspectRatio = productCardAspectRatio(width)
+  grid childAspectRatio uses helper (was isDesktop ? 0.72 : 0.68)
+
+product_detail_screen.dart
+  compactChrome = width < kPhoneBreakpoint
+  AppBar leading icon-only when compact
+  Recommended: GridView.builder with productCrossAxisCount max 3
+    (was forced 3-column Row of Expanded cards with computed height)
+
+product_card.dart
+  originLabel: maxLines 1, overflow ellipsis
+  price: maxLines 1, overflow ellipsis
+
+vendor_sidebar.dart
+  Removed patternOpacity: 0.07 from ImigongoBackground
+
+===============================================================================
+24. DEAD / INCOMPLETE / INCONSISTENT — DO NOT REDISCOVER
+===============================================================================
+
+ARCHITECTURE GAPS
+  No API, auth, persistence, router, l10n (English only), dark mode,
+    image assets, analytics.
+  Cart updateQuantity / removeAt unused — cannot change qty or remove lines in UI.
+  toggleMode() unused.
+  ProductsMock.search unused by landing.
+  Inventory/orders local copies isolated from shopper mocks.
+  Placed orders vanish; tracking URL is fake; payment method unused after select.
+  Favorites not global / not persisted; PDP recommended ignores them.
+  Checkout does not prefill NavigationState location.
+  Delivery fee 2000 vs mock order fees 1500–2500.
+  Identity: JP / Jean Paul K. vs KT / Kigali Tech Store vs customer Jean Paul K.
+
+UI DEAD CONTROLS
+  Mobile header search IconButton onPressed: () {}
+  Desktop "All Categories" prefix is not a dropdown
+  Landing "VIEW ALL →" is not tappable
+  Dashboard Store Status switch, "7 Days" chip, "View All" top sellers
+  Sidebar settings icon has no onTap
+  BMS Sync + Support are placeholders
+  Chat to bargain → mock SnackBar
+  Promo SHOP NOW only resets category to All
+
+MISSING SCREENS VS MARKETING COPY
+  No dedicated cart page (step 1 of "2 of 2" is implicit)
+  No order tracking page despite modal URL ikayi.rw/track/...
+  No login / vendor auth (anyone can open Vendor via storefront icon)
+  No guest "track my order" entry on landing
+  No multi-vendor storefront filtering by vendor
+  No real BMS integration despite "Sync BMS SKU — Connected"
+
+QUALITY / PLATFORM
+  Unsplash dependency (offline / blocked network = broken images)
+  google_fonts runtime fetch
+  Android release INTERNET permission missing from main manifest
+  macOS network.client entitlement missing
+  PWA theme/background color still Flutter blue #0175C2
+  One trivial widget test
+  README is boilerplate
+  CustomerOrder / Product rebuilt manually instead of copyWith
+  Landmark collected at checkout but vendor table doesn't show it
+  Variants stored on cart lines but never displayed at checkout
+  Stock never enforced on add-to-cart / buy-now
+  SALE -15% not applied to price
+  warning color unused; dark Imigongo unused; several AppColors unused
+  _openSupport TextEditingController not disposed
+  Inventory add uses nameCtrl.text not trimmed when non-empty check uses trim
+
+LOCATION DATA
+  Only 8 districts; incomplete sectors; Kanombe/Remera duplicated across districts
+
+===============================================================================
+25. CONVENTIONS TO PRESERVE IF YOU EXTEND THIS
+===============================================================================
+
+- Feature folders: features/shop vs features/vendor.
+- Shared look: AppColors + AppTheme + ImigongoBackground + Inter.
+- Money: integers RWF, formatRwf().
+- Guest-first: no account on shopper flow.
+- Mode switch via NavigationState, not routes; PDP/checkout via MaterialPageRoute.
+- Desktop breakpoint 900 for chrome; grid helpers for product cards.
+- Mock files are abstract final class with static data.
+- Vendor tables: DataTable + horizontal scroll.
+- Orange #FF5722 is the brand; don't silently switch to #FF6600 except primaryContainer.
+- Don't invent a backend in the UI layer without a clear data interface.
+- Prefer matching existing widget structure (private _Foo widgets in the same file).
+- Do not add markdown docs unless asked.
+
+===============================================================================
+26. SENSIBLE NEXT WORK (INFERRED, NOT STARTED)
+===============================================================================
+
+Highest-leverage if continuing the frontend as-is:
+
+1. Commit or finish the uncommitted responsive/Imigongo pass.
+2. Real cart page (qty, remove, variants) so checkout is actually step 2.
+3. Wire checkout into a shared in-memory OrdersState so vendor sees new orders.
+4. Prefill checkout location from NavigationState.
+5. Replace dead controls or hide them.
+6. Add INTERNET to Android main manifest if mobile storefront matters.
+7. Align PWA theme color with orange; align tracking URL with mart.ikayi.app.
+8. Then later: API, auth, persistence, go_router, real MoMo.
+
+===============================================================================
+27. FILE-BY-FILE IMPORT GRAPH (WHO DEPENDS ON WHAT)
+===============================================================================
+
+main.dart
+  flutter/material, provider
+  app_colors, app_theme, scroll_to_top, widgets (footer+imigongo)
+  landing_screen, inventory_screen, order_management_screen,
+  vendor_dashboard_screen, vendor_sidebar
+  cart_state, navigation_state
+
+landing_screen.dart
+  rwanda_locations, products_mock, models, app_colors, app_theme, widgets
+  cart_state, navigation_state, product_card, checkout_screen, product_detail_screen
+  provider
+
+product_detail_screen.dart
+  products_mock, models, app_colors, app_theme, currency_format, widgets
+  cart_state, product_card, checkout_screen
+  provider
+
+checkout_screen.dart
+  dart:math, flutter/material, provider
+  rwanda_locations, app_colors, app_theme, currency_format, widgets
+  cart_state, guest_tracking_modal
+
+product_card.dart
+  models, app_colors, currency_format
+
+guest_tracking_modal.dart
+  flutter/material, flutter/services (Clipboard)
+  app_colors
+
+vendor_sidebar.dart
+  app_colors, widgets, navigation_state
+
+vendor_dashboard_screen.dart
+  orders_mock, products_mock, app_colors, currency_format
+
+inventory_screen.dart
+  products_mock, models, app_colors, currency_format
+
+order_management_screen.dart
+  orders_mock, models, app_colors, currency_format
+
+app_theme.dart → app_colors, google_fonts, flutter/material
+imigongo_background.dart → dart:ui as ui, flutter/material, app_colors
+app_footer.dart → flutter/material, app_colors
+cart_state.dart → flutter/foundation (mapEquals, ChangeNotifier), models
+navigation_state.dart → flutter/foundation
+currency_format.dart → intl
+scroll_to_top.dart → flutter/material
+models.dart → no imports
+products_mock.dart → models
+orders_mock.dart → models
+rwanda_locations.dart → no imports
+widgets.dart → export only
+
+===============================================================================
+28. EXACT STRING COPY (FOR SEARCH / UI CONSISTENCY)
+===============================================================================
+
+App titles / chrome:
+  IKAYI MART
+  IKAYI MART | E-Commerce & Business Marketplace
+  VENDOR CENTRAL
+  Vendor Central
+  Back to Storefront
+  Back to Shop
+  Shop
+
+Landing:
+  SELECT DISTRICT/SECTOR
+  Search for items...
+  Search across Rwanda...
+  All Categories
+  Featured Marketplace
+  New Arrivals
+  VIEW ALL →
+  Showing {n} items found in Rwanda
+  Fast Delivery Across Kigali. Order now and get it in 60 minutes.
+  SHOP NOW
+  Select District / Sector
+  District
+  Sector
+  Confirm location
+  Your cart is empty
+  Location
+  Search (tooltip)
+  Cart (tooltip)
+  Vendor dashboard (tooltip)
+  Categories
+  Show all
+
+PDP:
+  Product
+  Product not found
+  BUY NOW
+  ADD TO CART
+  CHAT TO BARGAIN
+  {name} added to cart
+  Checkout (snackbar action)
+  Chat to bargain opens soon (mock)
+  DESCRIPTION
+  DELIVERY & WARRANTY
+  Sold by: {vendorName}
+  RECOMMENDED
+
+Checkout:
+  Checkout
+  CHECKOUT — Step 2 of 2
+  Guest checkout — no account needed
+  Full Name
+  Phone Number
+  +250 7XX XXX XXX
+  Required for MoMo & SMS guest tracking
+  Phone is required
+  Enter a valid Rwanda phone number
+  Landmark / Street
+  e.g. Near MTN Centre, Remera
+  Payment method
+  MTN Mobile Money (MoMo)
+  Pay with your MTN MoMo wallet
+  Airtel Money
+  Pay with Airtel Money
+  Visa / Bank Card
+  Debit or credit card
+  Order summary
+  Delivery
+  Grand total
+  PLACE ORDER (TOTAL: {amount})
+  Continue shopping
+  Select district and sector
+  Required
+  Select a district
+  Select a sector
+
+Tracking modal:
+  Order Placed!
+  Your guest tracking code is ready. Use it to follow delivery — no account required.
+  GUEST TRACKING ID
+  Total paid: {label}
+  Track at ikayi.rw/track/{code}
+  Tracking code copied
+  Copy code
+  Back to Shop
+
+Vendor dashboard:
+  Dashboard Overview
+  Store Status
+  Online
+  Today's Revenue (RWF)
+  +12.5%
+  Pending Orders
+  Urgent
+  Low Stock Items
+  Critical
+  Completed Orders
+  This Week
+  Revenue Trends
+  Daily performance comparison against previous week.
+  7 Days
+  Urgent Actions
+  Orders Requiring Dispatch
+  New Order #IKY-9842 — Shipping SLA expires in 2h
+  Low Stock Warnings
+  Restock: iPhone 15 Pro Max Case — Only 2 units left
+  Unresolved Customer Inquiry
+  Query regarding missing charger cable
+  Top Selling Products
+  View All
+
+Inventory:
+  Inventory Management
+  Search products / SKU
+  Category
+  + Add New Product
+  Sync BMS SKU — Connected
+  Product / Price / Stock / Active / Actions
+  Out / Low Stock / In Stock
+  Add New Product
+  Edit Product
+  Name
+  Price (RWF)
+  Stock
+  Cancel
+  Save
+  Newly added product (mock).
+  New Product
+  Edit / Delete (tooltips)
+
+Orders:
+  Order Management
+  All / Pending / Processing / Shipped / Delivered / Issue Reported
+  Order ID / Guest / Phone / Location / Items / Total / Status / Support
+  Support — #{id}
+  No open ticket. Guest may still contact support.
+  Resolution reply
+  Write a response to the guest...
+  Close
+  Send reply
+  Reply sent for #{id} (mock)
+  Resolve issue (tooltip)
+
+Placeholders:
+  BMS Sync
+  SKU sync with your Business Management System is connected (mock).
+  Support
+  Guest support tickets appear under Order Management → Issue Reported.
+
+Footer:
+  © {year} IKAYI MART. All rights reserved.
+
+Sidebar:
+  Dashboard / Inventory / Orders / BMS Sync / Support
+  Kigali Tech Store
+  Verified Vendor
+  Jean Paul K.
+  JP
+  KT
+
+===============================================================================
+END OF HANDOFF
+The frontend is a mock-only Flutter dual shopper/vendor shell.
+Uncommitted grid + Imigongo polish is sitting on main, two commits ahead of origin.
+Continue from the working tree, not from origin/main.
+===============================================================================

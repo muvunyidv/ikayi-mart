@@ -3,8 +3,32 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
 
-/// Responsive breakpoint shared across the app (spec: 900px).
+/// Responsive breakpoints shared across the app.
 const double kDesktopBreakpoint = 900;
+const double kTabletBreakpoint = 600;
+const double kPhoneBreakpoint = 400;
+
+/// Marketplace / product-card grid columns for [width].
+///
+/// Caps at [max] so short lists (e.g. recommended) never force empty columns.
+/// Phones stay at 2 columns when space allows; only very narrow widths drop to 1.
+int productCrossAxisCount(double width, {int max = 4}) {
+  final count = width >= kDesktopBreakpoint
+      ? 4
+      : width >= kTabletBreakpoint
+          ? 3
+          : width >= 340
+              ? 2
+              : 1;
+  return count.clamp(1, max);
+}
+
+/// Card aspect ratio tuned so image + title + price fit without clipping.
+double productCardAspectRatio(double width) {
+  if (width >= kDesktopBreakpoint) return 0.72;
+  if (width >= kTabletBreakpoint) return 0.70;
+  return 0.68;
+}
 
 abstract final class AppTheme {
   static ThemeData get light {

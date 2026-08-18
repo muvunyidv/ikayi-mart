@@ -1,14 +1,15 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/api/ikayi_api.dart';
 import '../../../core/constants/rwanda_locations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_format.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../../state/cart_state.dart';
+import '../../../state/catalog_state.dart';
+import '../../../state/navigation_state.dart';
 import '../widgets/guest_tracking_modal.dart';
 
 enum _PaymentMethod { mtnMomo, airtelMoney, visaCard }
@@ -32,12 +33,31 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   bool _placing = false;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final nav = context.read<NavigationState>();
+      setState(() {
+        _district = nav.selectedDistrict;
+        _sector = nav.selectedSector;
+      });
+    });
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
     _landmarkController.dispose();
     super.dispose();
   }
+
+  String get _apiPaymentMethod => switch (_payment) {
+        _PaymentMethod.mtnMomo => 'MTN_MOMO',
+        _PaymentMethod.airtelMoney => 'AIRTEL_MONEY',
+        _PaymentMethod.visaCard => 'VISA_CARD',
+      };
 
   Future<void> _placeOrder(CartState cart) async {
     if (!_formKey.currentState!.validate()) return;
@@ -49,19 +69,54 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
 
     setState(() => _placing = true);
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
-
-    final code = '#IKY-${1000 + Random().nextInt(9000)}';
-    final totalLabel = formatRwf(cart.grandTotalRwf, suffix: true);
-    cart.clear();
-    setState(() => _placing = false);
-
-    await GuestTrackingModal.show(
-      context,
-      trackingCode: code,
-      totalRwfLabel: totalLabel,
-    );
+    final api = context.read<IkayiApi>();
+    try {
+      final result = await api.guestCheckout(
+        guestName: _nameController.text.trim(),
+        phone: _phoneController.text.trim(),
+        district: _district!,
+        sector: _sector!,
+        landmark: _landmarkController.text.trim(),
+        paymentMethod: _apiPaymentMethod,
+        items: cart.items
+            .map(
+              (item) => {
+                'productId': item.product.id,
+                'quantity': item.quantity,
+                if (item.selectedVariants.isNotEmpty)
+                  'selectedVariants': item.selectedVariants,
+              },
+            )
+            .toList(),
+      );
+      try {
+        await api.initiatePayment(
+          trackingCode: result.trackingCode,
+          phone: result.phone,
+          method: _apiPaymentMethod,
+        );
+      } catch (_) {
+        // Order is already placed; payment prompt is best-effort.
+      }
+      if (!mounted) return;
+      final totalLabel = formatRwf(result.totalAmountRwf, suffix: true);
+      cart.clear();
+      final catalog = context.read<CatalogState>();
+      await catalog.load();
+      if (!mounted) return;
+      setState(() => _placing = false);
+      await GuestTrackingModal.show(
+        context,
+        trackingCode: result.trackingCode,
+        totalRwfLabel: totalLabel,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _placing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    }
   }
 
   @override
@@ -136,6 +191,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
+            key: ValueKey('district-$_district'),
             initialValue: _district,
             decoration: const InputDecoration(labelText: 'District'),
             items: RwandaLocations.districtNames
@@ -151,6 +207,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
+            key: ValueKey('sector-$_district-$_sector'),
             initialValue: sectors.contains(_sector) ? _sector : null,
             decoration: const InputDecoration(labelText: 'Sector'),
             items: sectors

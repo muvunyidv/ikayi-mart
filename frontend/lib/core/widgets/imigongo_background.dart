@@ -18,8 +18,11 @@ enum ImigongoVariant {
 
 /// Subtle Rwandan Imigongo-inspired geometric page/shell backdrop.
 ///
-/// Painted with native [CustomPainter] paths only — no assets or shaders.
-/// Keep opacity low so enterprise UI stays readable.
+/// Matches the IKAYI BMS motif: continuous horizontal zigzag / chevron strokes
+/// stacked so peaks of one row meet valleys of the next, forming a seamless
+/// diamond mesh. Nested parallel zigzags add the inner-diamond imprint.
+/// Painted with [CustomPainter] only — no assets (Flutter equivalent of an
+/// inline SVG `data:image/svg+xml` CSS background).
 class ImigongoBackground extends StatelessWidget {
   const ImigongoBackground({
     super.key,
@@ -46,8 +49,9 @@ class ImigongoBackground extends StatelessWidget {
   double get _resolvedOpacity {
     if (patternOpacity != null) return patternOpacity!;
     return switch (variant) {
-      ImigongoVariant.dark => 0.09,
-      ImigongoVariant.light => 0.07,
+      ImigongoVariant.dark => 0.10,
+      // Soft watermark: light grey stroke already near the ground color.
+      ImigongoVariant.light => 0.85,
       ImigongoVariant.navActive => 0.18,
     };
   }
@@ -55,7 +59,8 @@ class ImigongoBackground extends StatelessWidget {
   Color get _strokeColor {
     return switch (variant) {
       ImigongoVariant.dark => Colors.white,
-      ImigongoVariant.light => AppColors.onSurface,
+      // Matches reference soft grey (~#E2E8F0).
+      ImigongoVariant.light => const Color(0xFFE2E8F0),
       ImigongoVariant.navActive => AppColors.primaryOrange,
     };
   }
@@ -90,9 +95,14 @@ class _ImigongoPainter extends CustomPainter {
   final Color primaryColor;
   final double patternOpacity;
 
-  static const double _bandHeight = 56;
-  static const double _zigWidth = 28;
-  static const double _inset = 18;
+  /// Peak-to-peak horizontal wavelength (BMS ~36–40px tile).
+  static const double _periodX = 40;
+
+  /// Full diamond height (two row-steps; peak-to-peak vertically).
+  static const double _periodY = 40;
+
+  /// Inset for the nested (inner) diamond outline.
+  static const double _nest = 5;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -103,84 +113,109 @@ class _ImigongoPainter extends CustomPainter {
       return;
     }
 
-    _paintBands(canvas, size);
-    if (variant == ImigongoVariant.light) {
-      _paintAccentChevrons(canvas, size);
-    }
+    _paintChevronMesh(canvas, size);
   }
 
-  void _paintBands(Canvas canvas, Size size) {
+  /// Continuous horizontal zigzags that tile into a diamond mesh.
+  ///
+  /// Rows are spaced by half the tile height so each row's valleys sit on the
+  /// next row's peaks — seamless both axes (CSS SVG equivalent):
+  ///
+  /// ```
+  /// M0 20 L20 0  L40 20 L60 0  L80 20   // row y = 0
+  /// M0 40 L20 20 L40 40 L60 20 L80 40   // row y = 20
+  /// ```
+  void _paintChevronMesh(Canvas canvas, Size size) {
     final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..strokeJoin = StrokeJoin.miter
+      ..strokeCap = StrokeCap.butt
+      ..color = strokeColor.withValues(alpha: patternOpacity);
+
+    final nestedPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1
       ..strokeJoin = StrokeJoin.miter
-      ..strokeCap = StrokeCap.round
-      ..color = strokeColor.withValues(alpha: patternOpacity);
+      ..strokeCap = StrokeCap.butt
+      ..color = strokeColor.withValues(alpha: patternOpacity * 0.85);
 
-    for (double y = 0; y < size.height + _bandHeight; y += _bandHeight) {
-      final upper = Path();
-      var x = -_zigWidth;
-      var peak = true;
-      upper.moveTo(x, y);
-      while (x < size.width + _zigWidth) {
-        final nextX = x + _zigWidth;
-        final midX = x + _zigWidth * 0.5;
-        final peakY = y;
-        final troughY = y + _bandHeight * 0.35;
-        if (peak) {
-          upper.lineTo(midX, peakY);
-          upper.lineTo(nextX, troughY);
-        } else {
-          upper.lineTo(midX, troughY);
-          upper.lineTo(nextX, peakY);
-        }
-        peak = !peak;
-        x = nextX;
-      }
-      canvas.drawPath(upper, paint);
+    final halfX = _periodX / 2;
+    final halfY = _periodY / 2;
 
-      final lower = Path();
-      x = -_zigWidth + _inset;
-      peak = false;
-      final troughY2 = y + _bandHeight * 0.62;
-      final peakY2 = y + _bandHeight * 0.92;
-      lower.moveTo(x, troughY2);
-      while (x < size.width + _zigWidth) {
-        final nextX = x + _zigWidth;
-        final midX = x + _zigWidth * 0.5;
-        if (peak) {
-          lower.lineTo(midX, peakY2);
-          lower.lineTo(nextX, troughY2);
-        } else {
-          lower.lineTo(midX, troughY2);
-          lower.lineTo(nextX, peakY2);
-        }
-        peak = !peak;
-        x = nextX;
-      }
-      canvas.drawPath(lower, paint);
+    _drawZigzagRows(
+      canvas,
+      size,
+      halfX: halfX,
+      halfY: halfY,
+      rowStep: halfY,
+      paint: paint,
+    );
+
+    // Second, slightly inset zigzag lattice → nested diamond imprint
+    // (Imigongo double-outline), still seamless.
+    final inset = _nest.toDouble();
+    _drawZigzagRows(
+      canvas,
+      size,
+      halfX: halfX - inset * 0.35,
+      halfY: halfY - inset,
+      rowStep: halfY,
+      paint: nestedPaint,
+      yOffset: inset,
+      xOffset: inset * 0.35,
+    );
+  }
+
+  void _drawZigzagRows(
+    Canvas canvas,
+    Size size, {
+    required double halfX,
+    required double halfY,
+    required double rowStep,
+    required Paint paint,
+    double yOffset = 0,
+    double xOffset = 0,
+  }) {
+    if (halfX <= 4 || halfY <= 4) return;
+
+    for (double y = yOffset - halfY; y < size.height + halfY; y += rowStep) {
+      canvas.drawPath(
+        _horizontalZigzag(
+          width: size.width,
+          // Valley baseline; peaks sit [halfY] above.
+          valleyY: y + halfY,
+          halfX: halfX,
+          amplitude: halfY,
+          xOffset: xOffset,
+        ),
+        paint,
+      );
     }
   }
 
-  void _paintAccentChevrons(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.7
-      ..strokeJoin = StrokeJoin.miter
-      ..strokeCap = StrokeCap.round
-      ..color = primaryColor.withValues(alpha: patternOpacity * 0.9);
+  /// One continuous horizontal chevron: valley → peak → valley → peak → …
+  ///
+  /// Equivalent to `M0 V L halfX (V-A) L periodX V L …`
+  Path _horizontalZigzag({
+    required double width,
+    required double valleyY,
+    required double halfX,
+    required double amplitude,
+    double xOffset = 0,
+  }) {
+    final path = Path();
+    final period = halfX * 2;
+    var x = xOffset - period;
+    path.moveTo(x, valleyY);
 
-    const step = 200.0;
-    for (double x = 100; x < size.width; x += step) {
-      final y18 = size.height * 0.18;
-      final y26 = size.height * 0.26;
-      final midY = (y18 + y26) / 2;
-      final chevron = Path()
-        ..moveTo(x - 8, midY - 6)
-        ..lineTo(x, midY + 6)
-        ..lineTo(x + 8, midY - 6);
-      canvas.drawPath(chevron, paint);
+    while (x < width + period) {
+      x += halfX;
+      path.lineTo(x, valleyY - amplitude);
+      x += halfX;
+      path.lineTo(x, valleyY);
     }
+    return path;
   }
 
   void _paintNavActive(Canvas canvas, Size size) {
