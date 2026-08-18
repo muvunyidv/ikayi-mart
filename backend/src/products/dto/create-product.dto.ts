@@ -52,7 +52,7 @@ export class CreateProductDto {
   @Min(0)
   stock!: number;
 
-  @ApiProperty({ example: 'http://localhost:3000/uploads/product.jpg' })
+  @ApiProperty({ example: 'https://res.cloudinary.com/demo/image/upload/v1/ikayi-mart/products/headphones.jpg' })
   @IsString()
   @MinLength(4)
   @MaxLength(500)

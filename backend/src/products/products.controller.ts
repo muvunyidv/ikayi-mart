@@ -9,17 +9,14 @@ import {
   Post,
   Put,
   Query,
-  Req,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
-import { diskStorage } from 'multer';
+import { memoryStorage } from 'multer';
 import { extname } from 'path';
-import { randomUUID } from 'crypto';
-import { Request } from 'express';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -29,14 +26,17 @@ import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/types/jwt-payload';
-import { ensureUploadDir } from '../common/upload';
+import { CloudinaryService } from '../common/cloudinary.service';
 
 const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
 
 @ApiTags('products')
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly products: ProductsService) {}
+  constructor(
+    private readonly products: ProductsService,
+    private readonly cloudinary: CloudinaryService,
+  ) {}
 
   @Public()
   @Get()
@@ -60,13 +60,7 @@ export class ProductsController {
   @ApiOperation({ summary: 'Upload a product image and return a public URL' })
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: (_req, _file, cb) => cb(null, ensureUploadDir()),
-        filename: (_req, file, cb) => {
-          const ext = extname(file.originalname || '').toLowerCase() || '.jpg';
-          cb(null, `${randomUUID()}${ext}`);
-        },
-      }),
+      storage: memoryStorage(),
       limits: { fileSize: 8 * 1024 * 1024 },
       fileFilter: (_req, file, cb) => {
         const ext = extname(file.originalname || '').toLowerCase();
@@ -81,13 +75,12 @@ export class ProductsController {
       },
     }),
   )
-  upload(@UploadedFile() file: Express.Multer.File, @Req() req: Request) {
+  async upload(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
       throw new BadRequestException('Choose an image file to upload');
     }
-    const host = req.get('host') ?? 'localhost:3000';
-    const protocol = req.protocol ?? 'http';
-    return { imageUrl: `${protocol}://${host}/uploads/${file.filename}` };
+    const imageUrl = await this.cloudinary.uploadProductImage(file);
+    return { imageUrl };
   }
 
   @Public()
