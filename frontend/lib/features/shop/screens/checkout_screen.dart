@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/api/ikayi_api.dart';
@@ -6,7 +7,6 @@ import '../../../core/constants/rwanda_locations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_format.dart';
-import '../../../core/widgets/widgets.dart';
 import '../../../state/cart_state.dart';
 import '../../../state/catalog_state.dart';
 import '../../../state/navigation_state.dart';
@@ -129,22 +129,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         : RwandaLocations.sectorsFor(_district!);
 
     if (cart.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Checkout')),
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.shopping_bag_outlined, size: 48),
-              const SizedBox(height: 12),
-              const Text('Your cart is empty'),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Continue shopping'),
-              ),
-            ],
-          ),
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.shopping_bag_outlined, size: 48),
+            const SizedBox(height: 12),
+            const Text('Your cart is empty'),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => context.go('/'),
+              child: const Text('Continue shopping'),
+            ),
+          ],
         ),
       );
     }
@@ -283,38 +280,32 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       onPlaceOrder: () => _placeOrder(cart),
     );
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(title: const Text('Checkout')),
-      body: ImigongoBackground(
-        child: isDesktop
-            ? Padding(
-                padding: const EdgeInsets.all(32),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: SingleChildScrollView(child: form),
-                    ),
-                    const SizedBox(width: 32),
-                    SizedBox(width: 360, child: summary),
-                  ],
+    return isDesktop
+        ? Padding(
+            padding: const EdgeInsets.all(32),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: SingleChildScrollView(child: form),
                 ),
-              )
-            : Column(
-                children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: form,
-                    ),
-                  ),
-                  summary,
-                ],
+                const SizedBox(width: 32),
+                SizedBox(width: 360, child: summary),
+              ],
+            ),
+          )
+        : Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: form,
+                ),
               ),
-      ),
-    );
+              summary,
+            ],
+          );
   }
 }
 
@@ -436,9 +427,25 @@ class _OrderSummary extends StatelessWidget {
               Row(
                 children: [
                   const Expanded(child: Text('Delivery')),
-                  Text(formatRwf(CartState.deliveryFeeRwf, suffix: true)),
+                  Text(
+                    cart.deliveryFeeRwf == 0
+                        ? 'FREE'
+                        : formatRwf(cart.deliveryFeeRwf, suffix: true),
+                  ),
                 ],
               ),
+              if (cart.discountRwf > 0) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(child: Text('Promo (${cart.promoCode})')),
+                    Text(
+                      '- ${formatRwf(cart.discountRwf, suffix: true)}',
+                      style: const TextStyle(color: AppColors.primaryOrange),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 8),
               Row(
                 children: [

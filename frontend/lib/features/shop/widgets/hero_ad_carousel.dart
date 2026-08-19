@@ -13,6 +13,8 @@ class HeroPromoSlide {
     required this.icon,
     this.background = const Color(0xFFFDF3E7),
     this.accent = AppColors.primaryOrange,
+    this.targetCategory,
+    this.targetPath,
   });
 
   final String title;
@@ -21,6 +23,8 @@ class HeroPromoSlide {
   final IconData icon;
   final Color background;
   final Color accent;
+  final String? targetCategory;
+  final String? targetPath;
 }
 
 /// Prominent storefront hero with auto-playing promo slides.
@@ -28,12 +32,12 @@ class HeroAdCarousel extends StatelessWidget {
   const HeroAdCarousel({
     super.key,
     this.productImageUrls = const [],
-    this.onCta,
+    this.onSlideTap,
     this.slides = kDefaultHeroSlides,
   });
 
   final List<String> productImageUrls;
-  final VoidCallback? onCta;
+  final ValueChanged<HeroPromoSlide>? onSlideTap;
   final List<HeroPromoSlide> slides;
 
   static const kDefaultHeroSlides = <HeroPromoSlide>[
@@ -44,6 +48,7 @@ class HeroAdCarousel extends StatelessWidget {
       ctaLabel: 'Explore Deals →',
       icon: Icons.bolt_rounded,
       background: Color(0xFFFDF3E7),
+      targetCategory: 'All',
     ),
     HeroPromoSlide(
       title: 'Eco-friendly products that make an impact.',
@@ -52,6 +57,7 @@ class HeroAdCarousel extends StatelessWidget {
       ctaLabel: 'Shop the range →',
       icon: Icons.eco_rounded,
       background: Color(0xFFFFE8DE),
+      targetCategory: 'Home',
     ),
     HeroPromoSlide(
       title: 'Free 60-min Kigali delivery.',
@@ -60,6 +66,7 @@ class HeroAdCarousel extends StatelessWidget {
       ctaLabel: 'Shop Now →',
       icon: Icons.delivery_dining_rounded,
       background: Color(0xFFFFF6EE),
+      targetCategory: 'Fresh Produce',
     ),
   ];
 
@@ -70,7 +77,7 @@ class HeroAdCarousel extends StatelessWidget {
       key: ValueKey(isDesktop),
       slides: slides,
       productImageUrls: productImageUrls,
-      onCta: onCta,
+      onSlideTap: onSlideTap,
       isDesktop: isDesktop,
     );
   }
@@ -81,13 +88,13 @@ class _HeroAdCarouselView extends StatefulWidget {
     super.key,
     required this.slides,
     required this.productImageUrls,
-    required this.onCta,
+    required this.onSlideTap,
     required this.isDesktop,
   });
 
   final List<HeroPromoSlide> slides;
   final List<String> productImageUrls;
-  final VoidCallback? onCta;
+  final ValueChanged<HeroPromoSlide>? onSlideTap;
   final bool isDesktop;
 
   @override
@@ -97,14 +104,17 @@ class _HeroAdCarouselView extends StatefulWidget {
 class _HeroAdCarouselViewState extends State<_HeroAdCarouselView> {
   static const _autoPlayInterval = Duration(seconds: 5);
   static const _resumeDelay = Duration(seconds: 6);
+  static const _arrowResumeDelay = Duration(seconds: 60);
   static const _animDuration = Duration(milliseconds: 600);
 
   late final PageController _controller;
   late final int _initialPage;
   Timer? _autoTimer;
   Timer? _resumeTimer;
+  Timer? _arrowResumeTimer;
   int _currentIndex = 0;
   bool _userInteracting = false;
+  bool _arrowPaused = false;
 
   List<HeroPromoSlide> get _slides => widget.slides;
 
@@ -124,6 +134,7 @@ class _HeroAdCarouselViewState extends State<_HeroAdCarouselView> {
   void dispose() {
     _autoTimer?.cancel();
     _resumeTimer?.cancel();
+    _arrowResumeTimer?.cancel();
     _controller.removeListener(_syncIndex);
     _controller.dispose();
     super.dispose();
@@ -160,9 +171,29 @@ class _HeroAdCarouselViewState extends State<_HeroAdCarouselView> {
   }
 
   void _scheduleResume() {
+    if (_arrowPaused) return;
     _resumeTimer?.cancel();
     _resumeTimer = Timer(_resumeDelay, () {
+      if (!mounted || _arrowPaused) return;
+      _userInteracting = false;
+      _startAutoPlay();
+    });
+  }
+
+  void _onArrowTap(int delta) {
+    if (!_controller.hasClients || _slides.length < 2) return;
+    _arrowPaused = true;
+    _pauseAutoPlay();
+    _arrowResumeTimer?.cancel();
+    final next = (_controller.page?.round() ?? _initialPage) + delta;
+    _controller.animateToPage(
+      next,
+      duration: _animDuration,
+      curve: Curves.easeInOut,
+    );
+    _arrowResumeTimer = Timer(_arrowResumeDelay, () {
       if (!mounted) return;
+      _arrowPaused = false;
       _userInteracting = false;
       _startAutoPlay();
     });
@@ -200,34 +231,66 @@ class _HeroAdCarouselViewState extends State<_HeroAdCarouselView> {
             child: SizedBox(
               height: height,
               width: double.infinity,
-              child: Listener(
-                onPointerDown: (_) => _pauseAutoPlay(),
-                onPointerUp: (_) => _scheduleResume(),
-                onPointerCancel: (_) => _scheduleResume(),
-                child: NotificationListener<ScrollNotification>(
-                  onNotification: (n) {
-                    if (n is ScrollStartNotification && n.dragDetails != null) {
-                      _pauseAutoPlay();
-                    } else if (n is ScrollEndNotification) {
-                      _scheduleResume();
-                    }
-                    return false;
-                  },
-                  child: PageView.builder(
-                    controller: _controller,
-                    padEnds: false,
-                    clipBehavior: Clip.hardEdge,
-                    itemBuilder: (context, index) {
-                      final slideIndex = index % _slides.length;
-                      final slide = _slides[slideIndex];
-                      return _HeroSlideCard(
-                        slide: slide,
-                        imageUrls: _imagesFor(slideIndex),
-                        onCta: widget.onCta,
-                      );
-                    },
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Listener(
+                    onPointerDown: (_) => _pauseAutoPlay(),
+                    onPointerUp: (_) => _scheduleResume(),
+                    onPointerCancel: (_) => _scheduleResume(),
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: (n) {
+                        if (n is ScrollStartNotification &&
+                            n.dragDetails != null) {
+                          _pauseAutoPlay();
+                        } else if (n is ScrollEndNotification) {
+                          _scheduleResume();
+                        }
+                        return false;
+                      },
+                      child: PageView.builder(
+                        controller: _controller,
+                        padEnds: false,
+                        clipBehavior: Clip.hardEdge,
+                        itemBuilder: (context, index) {
+                          final slideIndex = index % _slides.length;
+                          final slide = _slides[slideIndex];
+                          return _HeroSlideCard(
+                            slide: slide,
+                            imageUrls: _imagesFor(slideIndex),
+                            onTap: widget.onSlideTap == null
+                                ? null
+                                : () => widget.onSlideTap!(slide),
+                          );
+                        },
+                      ),
+                    ),
                   ),
-                ),
+                  if (_slides.length > 1) ...[
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: _CarouselArrow(
+                          icon: Icons.chevron_left,
+                          tooltip: 'Previous promo',
+                          onPressed: () => _onArrowTap(-1),
+                        ),
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: _CarouselArrow(
+                          icon: Icons.chevron_right,
+                          tooltip: 'Next promo',
+                          onPressed: () => _onArrowTap(1),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
@@ -261,12 +324,12 @@ class _HeroSlideCard extends StatelessWidget {
   const _HeroSlideCard({
     required this.slide,
     required this.imageUrls,
-    required this.onCta,
+    required this.onTap,
   });
 
   final HeroPromoSlide slide;
   final List<String> imageUrls;
-  final VoidCallback? onCta;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -274,63 +337,67 @@ class _HeroSlideCard extends StatelessWidget {
       builder: (context, constraints) {
         final stacked = constraints.maxWidth < 560;
         final padding = stacked ? 20.0 : 28.0;
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                slide.background,
-                Color.lerp(slide.background, slide.accent, 0.10)!,
-              ],
-            ),
-          ),
-          child: stacked
-              ? Padding(
-                  padding: EdgeInsets.all(padding),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: _HeroCopy(
-                          slide: slide,
-                          onCta: onCta,
-                          compact: true,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Expanded(
-                        flex: 2,
-                        child: _HeroVisual(slide: slide, imageUrls: imageUrls),
-                      ),
-                    ],
-                  ),
-                )
-              : Row(
-                  children: [
-                    Expanded(
-                      flex: 5,
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          padding,
-                          padding,
-                          12,
-                          padding,
-                        ),
-                        child: _HeroCopy(
-                          slide: slide,
-                          onCta: onCta,
-                          compact: false,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 4,
-                      child: _HeroVisual(slide: slide, imageUrls: imageUrls),
-                    ),
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    slide.background,
+                    Color.lerp(slide.background, slide.accent, 0.10)!,
                   ],
                 ),
+              ),
+              child: stacked
+                  ? Padding(
+                      padding: EdgeInsets.all(padding),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: _HeroCopy(slide: slide, compact: true),
+                          ),
+                          const SizedBox(height: 8),
+                          Expanded(
+                            flex: 2,
+                            child: _HeroVisual(
+                              slide: slide,
+                              imageUrls: imageUrls,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : Row(
+                      children: [
+                        Expanded(
+                          flex: 5,
+                          child: Padding(
+                            padding: EdgeInsets.fromLTRB(
+                              padding,
+                              padding,
+                              12,
+                              padding,
+                            ),
+                            child: _HeroCopy(slide: slide, compact: false),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 4,
+                          child: _HeroVisual(
+                            slide: slide,
+                            imageUrls: imageUrls,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
         );
       },
     );
@@ -340,12 +407,10 @@ class _HeroSlideCard extends StatelessWidget {
 class _HeroCopy extends StatelessWidget {
   const _HeroCopy({
     required this.slide,
-    required this.onCta,
     required this.compact,
   });
 
   final HeroPromoSlide slide;
-  final VoidCallback? onCta;
   final bool compact;
 
   @override
@@ -385,23 +450,20 @@ class _HeroCopy extends StatelessWidget {
           ),
         ),
         SizedBox(height: compact ? 14 : 20),
-        FilledButton(
-          onPressed: onCta,
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.primaryOrange,
-            foregroundColor: AppColors.onPrimary,
-            elevation: 0,
-            minimumSize: const Size(0, 44),
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
-            ),
-            textStyle: const TextStyle(
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.primaryOrange,
+            borderRadius: BorderRadius.circular(30),
+          ),
+          child: Text(
+            slide.ctaLabel,
+            style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
+              color: AppColors.onPrimary,
             ),
           ),
-          child: Text(slide.ctaLabel),
         ),
       ],
     );
@@ -575,6 +637,33 @@ class _SlideDots extends StatelessWidget {
           ),
         );
       }),
+    );
+  }
+}
+
+class _CarouselArrow extends StatelessWidget {
+  const _CarouselArrow({
+    required this.icon,
+    required this.onPressed,
+    required this.tooltip,
+  });
+
+  final IconData icon;
+  final VoidCallback onPressed;
+  final String tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.92),
+      shape: const CircleBorder(),
+      elevation: 2,
+      child: IconButton(
+        tooltip: tooltip,
+        onPressed: onPressed,
+        icon: Icon(icon, color: AppColors.onSurface),
+        visualDensity: VisualDensity.compact,
+      ),
     );
   }
 }

@@ -167,11 +167,13 @@ class OrderLineItem {
     required this.productName,
     required this.quantity,
     required this.unitPriceRwf,
+    this.vendorName,
   });
 
   final String productName;
   final int quantity;
   final int unitPriceRwf;
+  final String? vendorName;
 
   int get totalRwf => unitPriceRwf * quantity;
 
@@ -180,6 +182,7 @@ class OrderLineItem {
       productName: json['productName'] as String? ?? '',
       quantity: (json['quantity'] as num?)?.toInt() ?? 1,
       unitPriceRwf: (json['unitPriceRwf'] as num?)?.toInt() ?? 0,
+      vendorName: json['vendorName'] as String?,
     );
   }
 }

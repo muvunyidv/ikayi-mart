@@ -16,6 +16,7 @@ class NavigationState extends ChangeNotifier {
   AppMode _mode = AppMode.shopper;
   VendorSection _vendorSection = VendorSection.dashboard;
   String _selectedCategory = 'All';
+  String _searchQuery = '';
   String _selectedDistrict = 'Nyarugenge';
   String _selectedSector = 'Nyarugenge';
   bool _shopperSidebarCollapsed = true;
@@ -24,6 +25,7 @@ class NavigationState extends ChangeNotifier {
   AppMode get mode => _mode;
   VendorSection get vendorSection => _vendorSection;
   String get selectedCategory => _selectedCategory;
+  String get searchQuery => _searchQuery;
   String get selectedDistrict => _selectedDistrict;
   String get selectedSector => _selectedSector;
   bool get shopperSidebarCollapsed => _shopperSidebarCollapsed;
@@ -66,6 +68,12 @@ class NavigationState extends ChangeNotifier {
   void setCategory(String category) {
     if (_selectedCategory == category) return;
     _selectedCategory = category;
+    notifyListeners();
+  }
+
+  void setSearchQuery(String query) {
+    if (_searchQuery == query) return;
+    _searchQuery = query;
     notifyListeners();
   }
 

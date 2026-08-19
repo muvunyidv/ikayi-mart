@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 
@@ -96,7 +97,7 @@ class GuestTrackingModal extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Track at ikayi.rw/track/$trackingCode',
+                  'Track at /tracking?code=$trackingCode',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: AppColors.tertiary,
                         fontSize: 12,
@@ -119,10 +120,19 @@ class GuestTrackingModal extends StatelessWidget {
           icon: const Icon(Icons.copy, size: 18),
           label: const Text('Copy code'),
         ),
+        TextButton(
+          onPressed: () {
+            final router = GoRouter.of(context);
+            Navigator.of(context).pop();
+            router.go('/tracking?code=$trackingCode');
+          },
+          child: const Text('Track order'),
+        ),
         ElevatedButton(
           onPressed: () {
+            final router = GoRouter.of(context);
             Navigator.of(context).pop();
-            Navigator.of(context).popUntil((route) => route.isFirst);
+            router.go('/');
           },
           style: ElevatedButton.styleFrom(
             minimumSize: const Size(140, 48),

@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('IKAYI MART storefront loads', (tester) async {
+  testWidgets('IKAYIMART storefront loads', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final api = IkayiApi();
     final auth = AuthState(api);
@@ -21,7 +21,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.textContaining('IKAYI MART'), findsWidgets);
+    expect(find.textContaining('IKAYIMART'), findsWidgets);
 
     // Unmount so the hero carousel auto-play timer is cancelled.
     await tester.pumpWidget(const SizedBox.shrink());

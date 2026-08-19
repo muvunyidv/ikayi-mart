@@ -25,6 +25,17 @@ class CatalogState extends ChangeNotifier {
     return products.where((p) => p.category == category).toList();
   }
 
+  /// Static catalog categories plus any extra values returned by the API.
+  List<String> get categoryOptions {
+    final extras = products
+        .map((p) => p.category)
+        .where((c) => c.isNotEmpty && !kCatalogCategories.contains(c))
+        .toSet()
+        .toList()
+      ..sort();
+    return [...kCatalogCategories, ...extras];
+  }
+
   /// In-stock products from the same vendor, excluding [product].
   List<Product> moreFromVendor(Product product) {
     return products

@@ -1,4 +1,4 @@
-# IKAYI MART
+# IKAYIMART
 
 Rwanda marketplace: guest shopper checkout and vendor management.
 

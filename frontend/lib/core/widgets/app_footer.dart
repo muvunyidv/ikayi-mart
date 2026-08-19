@@ -51,7 +51,7 @@ class AppFooter extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '© $year IKAYI MART. All rights reserved.',
+            '© $year IKAYIMART. All rights reserved.',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: AppColors.secondary,
@@ -73,7 +73,7 @@ class AppFooter extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            "IKAYI MART is Rwanda's fast 2-step guest marketplace.",
+            "IKAYIMART is Rwanda's fast 2-step guest marketplace.",
             style: Theme.of(context).textTheme.titleSmall,
           ),
           const SizedBox(height: 12),

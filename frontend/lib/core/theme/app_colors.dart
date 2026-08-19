@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// IKAYI MART color tokens — aligned with Stitch design system + brand orange.
+/// IKAYIMART color tokens — aligned with Stitch design system + brand orange.
 abstract final class AppColors {
   // Brand / CTA (spec: #FF5722, Stitch CTA: #FF6600)
   static const Color primaryOrange = Color(0xFFFF5722);

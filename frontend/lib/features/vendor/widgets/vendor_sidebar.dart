@@ -54,7 +54,7 @@ class VendorSidebar extends StatelessWidget {
                   ? Column(
                       children: [
                         const Tooltip(
-                          message: 'IKAYI MART',
+                          message: 'IKAYIMART',
                           child: Icon(
                             Icons.storefront,
                             color: AppColors.primaryOrange,
@@ -75,7 +75,7 @@ class VendorSidebar extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'IKAYI MART',
+                                'IKAYIMART',
                                 style: Theme.of(context).textTheme.titleSmall
                                     ?.copyWith(
                                       color: AppColors.primaryOrange,

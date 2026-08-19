@@ -20,16 +20,18 @@ class ShopperSidebar extends StatelessWidget {
     required this.onCategory,
     required this.collapsed,
     required this.onToggle,
+    this.categories = kCatalogCategories,
   });
 
   final String selectedCategory;
   final ValueChanged<String> onCategory;
   final bool collapsed;
   final VoidCallback onToggle;
+  final List<String> categories;
 
   @override
   Widget build(BuildContext context) {
-    final cats = kCatalogCategories.where((c) => c != 'All').toList();
+    final cats = categories.where((c) => c != 'All').toList();
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),

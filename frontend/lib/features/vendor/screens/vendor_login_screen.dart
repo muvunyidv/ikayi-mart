@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -77,8 +78,10 @@ class _VendorLoginScreenState extends State<VendorLoginScreen> {
           title: const Text('Vendor Central'),
           actions: [
             TextButton(
-              onPressed: () =>
-                  context.read<NavigationState>().setMode(AppMode.shopper),
+              onPressed: () {
+                context.read<NavigationState>().setMode(AppMode.shopper);
+                context.go('/');
+              },
               child: const Text('Shop'),
             ),
           ],

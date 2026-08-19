@@ -121,6 +121,6 @@ class ApiClient {
       }
     }
     if (data is String && data.isNotEmpty) return data;
-    return 'Request failed. Check that the IKAYI MART API is running.';
+    return 'Request failed. Check that the IKAYIMART API is running.';
   }
 }

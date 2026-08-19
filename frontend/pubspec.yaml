@@ -1,5 +1,5 @@
 name: ikayi_mart
-description: "IKAYI MART — Rwanda marketplace for web, desktop & mobile."
+description: "IKAYIMART — Rwanda marketplace for web, desktop & mobile."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -40,6 +40,9 @@ dependencies:
   http: ^1.5.0
   shared_preferences: ^2.5.3
   image_picker: ^1.2.0
+  go_router: ^17.5.0
+  flutter_web_plugins:
+    sdk: flutter
 
 dev_dependencies:
   flutter_test:

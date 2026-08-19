@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/api/ikayi_api.dart';
@@ -6,11 +7,9 @@ import '../../../core/models/models.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_format.dart';
-import '../../../core/widgets/widgets.dart';
 import '../../../state/cart_state.dart';
 import '../../../state/catalog_state.dart';
 import '../widgets/product_card.dart';
-import 'checkout_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   const ProductDetailScreen({super.key, required this.productId});
@@ -121,19 +120,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget build(BuildContext context) {
     final product = _product;
     if (_loading && product == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Product')),
-        body: const Center(child: CircularProgressIndicator()),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
     if (product == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Product')),
-        body: Center(child: Text(_error ?? 'Product not found')),
-      );
+      return Center(child: Text(_error ?? 'Product not found'));
     }
 
-    final cart = context.watch<CartState>();
     final catalog = context.watch<CatalogState>();
     final width = MediaQuery.sizeOf(context).width;
     final isDesktop = width >= kDesktopBreakpoint;
@@ -303,9 +295,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     product,
                     selectedVariants: Map.of(_selectedVariants),
                   );
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const CheckoutScreen()),
-                  );
+                  context.go('/checkout');
                 },
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size.fromHeight(56),
@@ -329,15 +319,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     SnackBar(
                       content: Text('${product.name} added to cart'),
                       action: SnackBarAction(
-                        label: 'Checkout',
+                        label: 'View cart',
                         textColor: Colors.white,
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const CheckoutScreen(),
-                            ),
-                          );
-                        },
+                        onPressed: () => context.go('/cart'),
                       ),
                     ),
                   );
@@ -359,56 +343,45 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
     final compactChrome = width < kPhoneBreakpoint;
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        leadingWidth: compactChrome ? 56 : 140,
-        leading: compactChrome
-            ? IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.arrow_back),
-                tooltip: 'Back to Shop',
-              )
-            : TextButton.icon(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.arrow_back),
-                label: const Text('Back to Shop'),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.onSurface,
-                ),
+    return SingleChildScrollView(
+      controller: _scrollController,
+      padding: EdgeInsets.all(isDesktop ? 32 : 16),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1100),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: compactChrome
+                    ? IconButton(
+                        onPressed: () {
+                          if (context.canPop()) {
+                            context.pop();
+                          } else {
+                            context.go('/');
+                          }
+                        },
+                        icon: const Icon(Icons.arrow_back),
+                        tooltip: 'Back to Shop',
+                      )
+                    : TextButton.icon(
+                        onPressed: () {
+                          if (context.canPop()) {
+                            context.pop();
+                          } else {
+                            context.go('/');
+                          }
+                        },
+                        icon: const Icon(Icons.arrow_back),
+                        label: const Text('Back to Shop'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.onSurface,
+                        ),
+                      ),
               ),
-        actions: [
-          IconButton(
-            onPressed: () {
-              if (cart.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Your cart is empty')),
-                );
-                return;
-              }
-              Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => const CheckoutScreen()));
-            },
-            icon: Badge(
-              isLabelVisible: cart.itemCount > 0,
-              backgroundColor: AppColors.primaryOrange,
-              label: Text('${cart.itemCount}'),
-              child: const Icon(Icons.shopping_cart_outlined),
-            ),
-          ),
-        ],
-      ),
-      body: ImigongoBackground(
-        child: SingleChildScrollView(
-          controller: _scrollController,
-          padding: EdgeInsets.all(isDesktop ? 32 : 16),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1100),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+              const SizedBox(height: 8),
                   if (isDesktop)
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -504,17 +477,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               ),
             ),
           ),
-        ),
-      ),
-    );
+        );
   }
 
   void _openProduct(Product item) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ProductDetailScreen(productId: item.id),
-      ),
-    );
+    context.push('/product/${item.id}');
   }
 }
 
