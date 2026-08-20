@@ -3,12 +3,10 @@ name: Deploy IKAYI MART to GitHub Pages
 on:
   push:
     branches:
-      - main # Change to 'master' if your default branch is named master
+      - main
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: 'pages'
@@ -16,9 +14,6 @@ concurrency:
 
 jobs:
   build-and-deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -41,17 +36,28 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
+      - name: Require Google Client ID
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+        run: |
+          if [ -z "$GOOGLE_CLIENT_ID" ]; then
+            echo "Missing GitHub secret GOOGLE_CLIENT_ID."
+            echo "Add it at: Settings → Secrets and variables → Actions → New repository secret"
+            echo "Name must be exactly GOOGLE_CLIENT_ID"
+            exit 1
+          fi
+
       - name: Build Web App
-        run: flutter build web --release --dart-define=GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+        run: flutter build web --release --base-href / --dart-define=GOOGLE_CLIENT_ID="$GOOGLE_CLIENT_ID"
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload Build Artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Publish to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: 'frontend/build/web'
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: frontend/build/web
+          publish_branch: gh-pages
+          force_orphan: true
+          cname: mart.ikayi.app
+          enable_jekyll: false
