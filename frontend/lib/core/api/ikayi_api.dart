@@ -124,6 +124,34 @@ class IkayiApi {
     return _authResult(data);
   }
 
+  Future<({VendorUser user, String accessToken})> loginWithGoogle({
+    required String idToken,
+    String? orderId,
+  }) async {
+    final data = await client.post('/auth/google', body: {
+      'idToken': idToken,
+      if (orderId != null && orderId.isNotEmpty) 'orderId': orderId,
+    });
+    return _authResult(data);
+  }
+
+  Future<({VendorUser user, String accessToken})> convertGuest({
+    required String orderId,
+    required String email,
+    required String password,
+  }) async {
+    final data = await client.post('/auth/convert-guest', body: {
+      'orderId': orderId,
+      'email': email,
+      'password': password,
+    });
+    return _authResult(data);
+  }
+
+  Future<void> claimGuestOrder(String orderId) async {
+    await client.post('/orders/$orderId/claim');
+  }
+
   Future<({VendorUser user, String accessToken})> registerVendor({
     required String email,
     required String password,
@@ -154,6 +182,7 @@ class IkayiApi {
 
   Future<GuestCheckoutResult> guestCheckout({
     required String guestName,
+    required String email,
     required String phone,
     required String district,
     required String sector,
@@ -161,8 +190,10 @@ class IkayiApi {
     required String paymentMethod,
     required List<Map<String, dynamic>> items,
   }) async {
-    final data = await client.post('/orders/guest-checkout', body: {
+    final data = await client.post('/orders', body: {
+      'isGuest': true,
       'guestName': guestName,
+      'email': email,
       'phone': phone,
       'district': district,
       'sector': sector,

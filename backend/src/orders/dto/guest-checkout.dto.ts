@@ -2,6 +2,8 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
+  IsBoolean,
+  IsEmail,
   IsEnum,
   IsInt,
   IsObject,
@@ -37,11 +39,23 @@ export class CheckoutLineItemDto {
 }
 
 export class GuestCheckoutDto {
+  @ApiPropertyOptional({
+    default: true,
+    description: 'Must be true for unauthenticated checkout',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isGuest?: boolean;
+
   @ApiProperty({ example: 'Aline Uwase' })
   @IsString()
   @MinLength(2)
   @MaxLength(80)
   guestName!: string;
+
+  @ApiProperty({ example: 'aline.uwase@gmail.com' })
+  @IsEmail()
+  email!: string;
 
   @ApiProperty({ example: '+250 788 123 456' })
   @IsString()

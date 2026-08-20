@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../../state/auth_state.dart';
 import '../../../state/navigation_state.dart';
+import '../widgets/google_sign_in_button.dart';
 
 class VendorLoginScreen extends StatefulWidget {
   const VendorLoginScreen({super.key});
@@ -22,6 +23,7 @@ class _VendorLoginScreenState extends State<VendorLoginScreen> {
   final _password = TextEditingController();
   final _confirmPassword = TextEditingController();
   bool _busy = false;
+  bool _googleBusy = false;
   bool _registering = false;
 
   @override
@@ -67,6 +69,22 @@ class _VendorLoginScreenState extends State<VendorLoginScreen> {
         ),
       );
     }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    setState(() => _googleBusy = true);
+    final auth = context.read<AuthState>();
+    final ok = await auth.loginWithGoogle();
+    if (!mounted) return;
+    setState(() => _googleBusy = false);
+    if (!ok) {
+      if (auth.error == null) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(auth.error!)),
+      );
+      return;
+    }
+    context.go('/');
   }
 
   @override
@@ -197,7 +215,7 @@ class _VendorLoginScreenState extends State<VendorLoginScreen> {
                           ],
                           const SizedBox(height: 24),
                           ElevatedButton(
-                            onPressed: _busy ? null : _submit,
+                            onPressed: _busy || _googleBusy ? null : _submit,
                             child: _busy
                                 ? const SizedBox(
                                     height: 22,
@@ -210,6 +228,30 @@ class _VendorLoginScreenState extends State<VendorLoginScreen> {
                                 : Text(
                                     _registering ? 'Create account' : 'Sign in',
                                   ),
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              const Expanded(child: Divider()),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                                child: Text(
+                                  'or',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(color: AppColors.secondary),
+                                ),
+                              ),
+                              const Expanded(child: Divider()),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          GoogleSignInButton(
+                            busy: _googleBusy,
+                            onPressed: _busy ? null : _signInWithGoogle,
                           ),
                           const SizedBox(height: 8),
                           Wrap(
@@ -226,7 +268,7 @@ class _VendorLoginScreenState extends State<VendorLoginScreen> {
                                     ?.copyWith(color: AppColors.secondary),
                               ),
                               TextButton(
-                                onPressed: _busy ? null : _toggleMode,
+                                onPressed: _busy || _googleBusy ? null : _toggleMode,
                                 child: Text(
                                   _registering
                                       ? 'Sign in'

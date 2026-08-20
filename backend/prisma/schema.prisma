@@ -10,6 +10,7 @@ datasource db {
 enum UserRole {
   ADMIN
   VENDOR
+  CUSTOMER
 }
 
 enum OrderStatus {
@@ -34,14 +35,19 @@ enum PaymentStatus {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
+  id        String          @id @default(uuid())
+  email     String          @unique
+  password  String?
   name      String
-  role      UserRole @default(VENDOR)
+  role      UserRole        @default(VENDOR)
+  phone     String?
+  district  String?
+  sector    String?
+  landmark  String?
   vendor    Vendor?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  orders    CustomerOrder[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
 }
 
 model Vendor {
@@ -96,6 +102,7 @@ model CustomerOrder {
   id             String          @id @default(uuid())
   trackingCode   String          @unique
   guestName      String
+  email          String?
   phone          String
   district       String
   sector         String
@@ -105,6 +112,9 @@ model CustomerOrder {
   status         OrderStatus     @default(PENDING)
   paymentMethod  PaymentMethod   @default(MTN_MOMO)
   paymentStatus  PaymentStatus   @default(PENDING)
+  isGuest        Boolean         @default(true)
+  userId         String?
+  user           User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
   items          OrderLineItem[]
   supportTicket  SupportTicket?
   payments       Payment[]
@@ -114,6 +124,8 @@ model CustomerOrder {
   @@index([status])
   @@index([paymentStatus])
   @@index([phone])
+  @@index([email])
+  @@index([userId])
   @@index([createdAt])
 }
 

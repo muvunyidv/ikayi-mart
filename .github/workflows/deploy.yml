@@ -42,7 +42,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Web App
-        run: flutter build web --release
+        run: flutter build web --release --dart-define=GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

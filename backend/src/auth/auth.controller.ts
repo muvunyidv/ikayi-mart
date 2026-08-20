@@ -3,6 +3,8 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterVendorDto } from './dto/register-vendor.dto';
 import { LoginDto } from './dto/login.dto';
+import { GoogleAuthDto } from './dto/google-auth.dto';
+import { ConvertGuestDto } from './dto/convert-guest.dto';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtPayload } from './types/jwt-payload';
@@ -24,6 +26,22 @@ export class AuthController {
   @ApiOperation({ summary: 'Login and receive a JWT' })
   login(@Body() dto: LoginDto) {
     return this.auth.login(dto);
+  }
+
+  @Public()
+  @Post('google')
+  @ApiOperation({ summary: 'Sign in with a Google ID token and receive a JWT' })
+  loginWithGoogle(@Body() dto: GoogleAuthDto) {
+    return this.auth.loginWithGoogle(dto.idToken, dto.orderId);
+  }
+
+  @Public()
+  @Post('convert-guest')
+  @ApiOperation({
+    summary: 'Create a shopper account from a guest order and return a JWT',
+  })
+  convertGuest(@Body() dto: ConvertGuestDto) {
+    return this.auth.convertGuest(dto);
   }
 
   @Get('me')

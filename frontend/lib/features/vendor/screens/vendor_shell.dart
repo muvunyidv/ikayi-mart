@@ -25,6 +25,9 @@ class VendorShell extends StatelessWidget {
     if (!auth.isLoggedIn) {
       return const VendorLoginScreen();
     }
+    if (!auth.user!.isVendorStaff) {
+      return const VendorLoginScreen();
+    }
 
     final nav = context.watch<NavigationState>();
     final user = auth.user!;

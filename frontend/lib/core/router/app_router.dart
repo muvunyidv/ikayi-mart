@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/shop/screens/cart_screen.dart';
 import '../../features/shop/screens/checkout_screen.dart';
 import '../../features/shop/screens/landing_screen.dart';
+import '../../features/shop/screens/order_success_screen.dart';
 import '../../features/shop/screens/order_tracking_screen.dart';
 import '../../features/shop/screens/product_detail_screen.dart';
 import '../../features/shop/screens/shopper_shell.dart';
@@ -34,6 +35,18 @@ GoRouter createAppRouter() {
           GoRoute(
             path: '/checkout',
             builder: (context, state) => const CheckoutScreen(),
+          ),
+          GoRoute(
+            path: '/order-success',
+            builder: (context, state) {
+              final q = state.uri.queryParameters;
+              return OrderSuccessScreen(
+                orderId: q['orderId'] ?? '',
+                trackingCode: q['code'] ?? '',
+                email: q['email'] ?? '',
+                totalRwfLabel: q['total'] ?? '',
+              );
+            },
           ),
           GoRoute(
             path: '/tracking',

@@ -10,7 +10,7 @@ import '../../../core/utils/currency_format.dart';
 import '../../../state/cart_state.dart';
 import '../../../state/catalog_state.dart';
 import '../../../state/navigation_state.dart';
-import '../widgets/guest_tracking_modal.dart';
+import '../../../state/auth_state.dart';
 
 enum _PaymentMethod { mtnMomo, airtelMoney, visaCard }
 
@@ -24,6 +24,7 @@ class CheckoutScreen extends StatefulWidget {
 class _CheckoutScreenState extends State<CheckoutScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _landmarkController = TextEditingController();
 
@@ -42,12 +43,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         _district = nav.selectedDistrict;
         _sector = nav.selectedSector;
       });
+      final auth = context.read<AuthState>();
+      if (auth.user != null) {
+        _nameController.text = auth.user!.name;
+        _emailController.text = auth.user!.email;
+      }
     });
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _emailController.dispose();
     _phoneController.dispose();
     _landmarkController.dispose();
     super.dispose();
@@ -73,6 +80,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     try {
       final result = await api.guestCheckout(
         guestName: _nameController.text.trim(),
+        email: _emailController.text.trim(),
         phone: _phoneController.text.trim(),
         district: _district!,
         sector: _sector!,
@@ -105,11 +113,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       await catalog.load();
       if (!mounted) return;
       setState(() => _placing = false);
-      await GuestTrackingModal.show(
-        context,
-        trackingCode: result.trackingCode,
-        totalRwfLabel: totalLabel,
+      final uri = Uri(
+        path: '/order-success',
+        queryParameters: {
+          'orderId': result.orderId,
+          'code': result.trackingCode,
+          'email': _emailController.text.trim(),
+          'total': totalLabel,
+        },
       );
+      context.go(uri.toString());
     } catch (e) {
       if (!mounted) return;
       setState(() => _placing = false);
@@ -171,7 +184,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Guest checkout — no account needed',
+              'Guest checkout — email, phone, and delivery address',
               style: Theme.of(
                 context,
               ).textTheme.bodyMedium?.copyWith(color: AppColors.secondary),
@@ -182,6 +195,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               decoration: const InputDecoration(labelText: 'Full Name'),
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? 'Required' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.email],
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                helperText: 'Order confirmation and optional account later',
+              ),
+              validator: (v) =>
+                  (v == null || !v.contains('@')) ? 'Enter a valid email' : null,
             ),
             const SizedBox(height: 12),
             TextFormField(
@@ -247,7 +272,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             const SizedBox(height: 12),
             _PaymentTile(
               title: 'MTN Mobile Money (MoMo)',
-              subtitle: 'Pay with your MTN MoMo wallet',
+              subtitle: 'Pay with MTN MoMo (USSD push)',
               icon: Icons.phone_android,
               selected: _payment == _PaymentMethod.mtnMomo,
               onTap: () => setState(() => _payment = _PaymentMethod.mtnMomo),

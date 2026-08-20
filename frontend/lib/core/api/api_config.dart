@@ -36,3 +36,13 @@ String resolveSocketOrigin() {
   }
   return 'http://localhost:3000';
 }
+
+/// Google OAuth 2.0 **Web** client ID.
+///
+/// Used as `GoogleSignIn.clientId` on web and `serverClientId` on Android so
+/// the ID token audience matches `GOOGLE_CLIENT_ID` on the NestJS API.
+/// Override with `--dart-define=GOOGLE_CLIENT_ID=....apps.googleusercontent.com`.
+String resolveGoogleClientId() {
+  const fromEnv = String.fromEnvironment('GOOGLE_CLIENT_ID');
+  return fromEnv;
+}

@@ -4,6 +4,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -63,6 +64,12 @@ export class OrdersService {
   ) {}
 
   async guestCheckout(dto: GuestCheckoutDto) {
+    if (dto.isGuest === false) {
+      throw new UnauthorizedException(
+        'Sign in is required when isGuest is false',
+      );
+    }
+
     const phone = normalizeRwandaPhone(dto.phone);
     if (!phone) {
       throw new BadRequestException(
@@ -127,6 +134,7 @@ export class OrdersService {
         data: {
           trackingCode,
           guestName: dto.guestName.trim(),
+          email: dto.email.toLowerCase().trim(),
           phone,
           district: dto.district.trim(),
           sector: dto.sector.trim(),
@@ -136,6 +144,7 @@ export class OrdersService {
           status: OrderStatus.PENDING,
           paymentMethod,
           paymentStatus: PaymentStatus.PENDING,
+          isGuest: true,
           items: {
             create: merged.map((item) => {
               const product = productMap.get(item.productId)!;
@@ -186,6 +195,9 @@ export class OrdersService {
       itemsTotalRwf: itemsTotal,
       totalAmountRwf: order.totalAmountRwf,
       phone: order.phone,
+      email: order.email,
+      isGuest: order.isGuest,
+      userId: order.userId,
       payment: {
         requiresUssdPush: paymentMethod !== PaymentMethod.VISA_CARD,
         initiateUrl: '/api/v1/payments/initiate',
@@ -205,6 +217,41 @@ export class OrdersService {
       throw new NotFoundException('Order not found');
     }
     return this.toPublicOrder(order);
+  }
+
+  async listForCustomer(user: JwtPayload) {
+    const orders = await this.prisma.customerOrder.findMany({
+      where: { userId: user.sub },
+      include: ORDER_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+    });
+    return orders.map((order) => this.toPublicOrder(order));
+  }
+
+  async claimForUser(user: JwtPayload, orderId: string) {
+    const order = await this.prisma.customerOrder.findUnique({
+      where: { id: orderId },
+      include: ORDER_INCLUDE,
+    });
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    const orderEmail = (order.email ?? '').toLowerCase().trim();
+    if (!orderEmail || orderEmail !== user.email.toLowerCase().trim()) {
+      throw new BadRequestException('This order belongs to a different email');
+    }
+
+    if (order.userId && order.userId !== user.sub) {
+      throw new ForbiddenException('This order is already linked to another account');
+    }
+
+    const updated = await this.prisma.customerOrder.update({
+      where: { id: orderId },
+      data: { userId: user.sub, isGuest: false },
+      include: ORDER_INCLUDE,
+    });
+    return this.toPublicOrder(updated);
   }
 
   async listForVendor(user: JwtPayload, status?: OrderStatus) {
@@ -292,6 +339,7 @@ export class OrdersService {
       id: order.id,
       trackingCode: order.trackingCode,
       guestName: order.guestName,
+      email: order.email,
       phone: order.phone,
       district: order.district,
       sector: order.sector,
@@ -302,6 +350,8 @@ export class OrdersService {
       status: order.status,
       paymentMethod: order.paymentMethod,
       paymentStatus: order.paymentStatus,
+      isGuest: order.isGuest,
+      userId: order.userId,
       createdAt: order.createdAt,
       items: order.items.map((i) => ({
         productName: i.product.name,

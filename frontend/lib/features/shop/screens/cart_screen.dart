@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_format.dart';
 import '../../../state/cart_state.dart';
+import '../widgets/checkout_choice_sheet.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -93,7 +94,7 @@ class _CartScreenState extends State<CartScreen> {
       cart: cart,
       promoController: _promoController,
       onApplyPromo: () => _applyPromo(cart),
-      onCheckout: () => context.go('/checkout'),
+      onCheckout: () => CheckoutChoiceSheet.show(context),
     );
 
     return isDesktop

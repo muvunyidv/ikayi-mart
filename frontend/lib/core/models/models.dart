@@ -317,6 +317,11 @@ class VendorUser {
         : n.substring(0, n.length >= 2 ? 2 : 1).toUpperCase();
   }
 
+  bool get isVendorStaff {
+    final normalized = role.toUpperCase();
+    return normalized == 'VENDOR' || normalized == 'ADMIN';
+  }
+
   factory VendorUser.fromJson(Map<String, dynamic> json) {
     final vendor = json['vendor'];
     return VendorUser(

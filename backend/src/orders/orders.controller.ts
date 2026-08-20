@@ -16,8 +16,18 @@ export class OrdersController {
   constructor(private readonly orders: OrdersService) {}
 
   @Public()
+  @Post()
+  @ApiOperation({
+    summary:
+      'Place an order. Unauthenticated when isGuest is true and contact details are provided.',
+  })
+  create(@Body() dto: GuestCheckoutDto) {
+    return this.orders.guestCheckout(dto);
+  }
+
+  @Public()
   @Post('guest-checkout')
-  @ApiOperation({ summary: 'Guest checkout: validate stock, create order, return tracking code' })
+  @ApiOperation({ summary: 'Guest checkout alias of POST /orders' })
   guestCheckout(@Body() dto: GuestCheckoutDto) {
     return this.orders.guestCheckout(dto);
   }
@@ -29,12 +39,29 @@ export class OrdersController {
     return this.orders.track(code);
   }
 
+  @Get('mine')
+  @Roles(UserRole.CUSTOMER, UserRole.VENDOR, UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Orders linked to the signed-in shopper account' })
+  listMine(@CurrentUser() user: JwtPayload) {
+    return this.orders.listForCustomer(user);
+  }
+
   @Get('vendor')
   @Roles(UserRole.VENDOR, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Vendor order list, optionally filtered by status' })
   listVendor(@CurrentUser() user: JwtPayload, @Query() query: QueryVendorOrdersDto) {
     return this.orders.listForVendor(user, query.status);
+  }
+
+  @Post(':id/claim')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Attach a guest order to the signed-in account when emails match',
+  })
+  claim(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    return this.orders.claimForUser(user, id);
   }
 
   @Patch(':id/status')
