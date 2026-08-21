@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -48,6 +50,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         _nameController.text = auth.user!.name;
         _emailController.text = auth.user!.email;
       }
+      context.read<IkayiApi>().wake();
     });
   }
 
@@ -97,21 +100,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             )
             .toList(),
       );
-      try {
-        await api.initiatePayment(
-          trackingCode: result.trackingCode,
-          phone: result.phone,
-          method: _apiPaymentMethod,
-        );
-      } catch (_) {
-        // Order is already placed; payment prompt is best-effort.
-      }
       if (!mounted) return;
       final totalLabel = formatRwf(result.totalAmountRwf, suffix: true);
       cart.clear();
-      final catalog = context.read<CatalogState>();
-      await catalog.load();
-      if (!mounted) return;
+      unawaited(context.read<CatalogState>().load());
       setState(() => _placing = false);
       final uri = Uri(
         path: '/order-success',

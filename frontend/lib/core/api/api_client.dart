@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -10,6 +11,8 @@ class ApiClient {
       : _http = httpClient ?? http.Client(),
         baseUrl = baseUrl ?? resolveApiBaseUrl(),
         socketOrigin = socketOrigin ?? resolveSocketOrigin();
+
+  static const _timeout = Duration(seconds: 45);
 
   final http.Client _http;
 
@@ -30,42 +33,40 @@ class ApiClient {
 
   Future<dynamic> get(String path, {Map<String, String>? query}) async {
     final uri = _uri(path, query);
-    final res = await _http
-        .get(uri, headers: _headers())
-        .timeout(const Duration(seconds: 20));
+    final res = await _timed(() => _http.get(uri, headers: _headers()));
     return _decode(res);
   }
 
   Future<dynamic> post(String path, {Object? body}) async {
-    final res = await _http
-        .post(
-          _uri(path),
-          headers: _headers(jsonBody: true),
-          body: body == null ? null : jsonEncode(body),
-        )
-        .timeout(const Duration(seconds: 20));
+    final res = await _timed(
+      () => _http.post(
+        _uri(path),
+        headers: _headers(jsonBody: true),
+        body: body == null ? null : jsonEncode(body),
+      ),
+    );
     return _decode(res);
   }
 
   Future<dynamic> put(String path, {Object? body}) async {
-    final res = await _http
-        .put(
-          _uri(path),
-          headers: _headers(jsonBody: true),
-          body: body == null ? null : jsonEncode(body),
-        )
-        .timeout(const Duration(seconds: 20));
+    final res = await _timed(
+      () => _http.put(
+        _uri(path),
+        headers: _headers(jsonBody: true),
+        body: body == null ? null : jsonEncode(body),
+      ),
+    );
     return _decode(res);
   }
 
   Future<dynamic> patch(String path, {Object? body}) async {
-    final res = await _http
-        .patch(
-          _uri(path),
-          headers: _headers(jsonBody: true),
-          body: body == null ? null : jsonEncode(body),
-        )
-        .timeout(const Duration(seconds: 20));
+    final res = await _timed(
+      () => _http.patch(
+        _uri(path),
+        headers: _headers(jsonBody: true),
+        body: body == null ? null : jsonEncode(body),
+      ),
+    );
     return _decode(res);
   }
 
@@ -80,16 +81,29 @@ class ApiClient {
     request.files.add(
       http.MultipartFile.fromBytes(field, bytes, filename: filename),
     );
-    final streamed = await request.send().timeout(const Duration(seconds: 60));
+    final streamed = await _timed(() => request.send(), timeout: const Duration(seconds: 60));
     final res = await http.Response.fromStream(streamed);
     return _decode(res);
   }
 
   Future<dynamic> delete(String path) async {
-    final res = await _http
-        .delete(_uri(path), headers: _headers())
-        .timeout(const Duration(seconds: 20));
+    final res = await _timed(
+      () => _http.delete(_uri(path), headers: _headers()),
+    );
     return _decode(res);
+  }
+
+  Future<T> _timed<T>(
+    Future<T> Function() request, {
+    Duration timeout = _timeout,
+  }) async {
+    try {
+      return await request().timeout(timeout);
+    } on TimeoutException {
+      throw const ApiException(
+        'The server took too long to respond. Tap Pay now again — the first try can wake the API.',
+      );
+    }
   }
 
   Uri _uri(String path, [Map<String, String>? query]) {

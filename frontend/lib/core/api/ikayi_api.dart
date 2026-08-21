@@ -9,6 +9,13 @@ class IkayiApi {
 
   void setToken(String? token) => client.token = token;
 
+  /// Wakes a sleeping Render instance so checkout is less likely to time out.
+  Future<void> wake() async {
+    try {
+      await client.get('/health');
+    } catch (_) {}
+  }
+
   Future<List<Product>> listProducts({
     String? category,
     String? search,

@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
+import { JobsOptions, Queue } from 'bullmq';
 import {
   OrderStatus,
   PaymentMethod,
@@ -182,15 +182,11 @@ export class OrdersService {
       });
     } else {
       const ttlSeconds = Number(this.config.get('STOCK_HOLD_TTL_SECONDS') ?? 900);
-      try {
-        await this.stockHolds.add(
-          JOB_EXPIRE_STOCK_HOLD,
-          { orderId: order.id },
-          { delay: ttlSeconds * 1000, removeOnComplete: true, jobId: `hold-${order.id}` },
-        );
-      } catch (err) {
-        this.logger.warn(`Stock-hold queue unavailable: ${err}`);
-      }
+      this.enqueueBestEffort(this.stockHolds, JOB_EXPIRE_STOCK_HOLD, { orderId: order.id }, {
+        delay: ttlSeconds * 1000,
+        removeOnComplete: true,
+        jobId: `hold-${order.id}`,
+      });
     }
 
     const vendorIds = [...new Set(order.items.map((i) => i.vendorId))];
@@ -205,11 +201,10 @@ export class OrdersService {
         createdAt: order.createdAt,
       };
       this.gateway.notifyNewOrder(vendorId, payload);
-      try {
-        await this.notifications.add(JOB_NOTIFY_VENDOR, { vendorId, ...payload });
-      } catch (err) {
-        this.logger.warn(`Vendor notify queue unavailable: ${err}`);
-      }
+      this.enqueueBestEffort(this.notifications, JOB_NOTIFY_VENDOR, {
+        vendorId,
+        ...payload,
+      });
     }
 
     this.logger.log(`Guest order ${order.trackingCode} created`);
@@ -447,6 +442,17 @@ export class OrdersService {
         throw new BadRequestException(`Invalid variant ${name}=${option}`);
       }
     }
+  }
+
+  private enqueueBestEffort(
+    queue: Queue,
+    name: string,
+    data: Record<string, unknown>,
+    opts?: JobsOptions,
+  ): void {
+    void queue.add(name, data, opts).catch((err: unknown) => {
+      this.logger.warn(`Queue job ${name} skipped: ${err}`);
+    });
   }
 
   private async allocateTrackingCode(tx: Prisma.TransactionClient): Promise<string> {
