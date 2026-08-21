@@ -101406,16 +101406,16 @@ break
 case 6:case 1:return A.A(q,r)
 case 2:return A.z(o.at(-1),r)}})
 return A.B($async$t6,r)},
-F(a3){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e,d,c,b=this,a=null,a0=A.bC(a3,!0,t.r2),a1=A.ba(a3,B.bG,t.w).w,a2=b.x
-if(a2==null)s=A.b([],t.s)
-else{a2=B.xd.i(0,a2)
-if(a2==null)a2=B.cj
-s=A.iH(a2,!0,t.N)}if(a0.a.length===0)return A.dh(A.b5(A.b([B.LI,B.T,B.a22,B.aI,A.fV(B.CO,new A.aw7(a3),a)],t.p),B.q,B.k,B.aj),a,a)
-a2=A.bk(16)
+F(a4){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e,d,c,b=this,a=null,a0="Test mode \u2014 tracking code issued immediately",a1=A.bC(a4,!0,t.r2),a2=A.ba(a4,B.bG,t.w).w,a3=b.x
+if(a3==null)s=A.b([],t.s)
+else{a3=B.xd.i(0,a3)
+if(a3==null)a3=B.cj
+s=A.iH(a3,!0,t.N)}if(a1.a.length===0)return A.dh(A.b5(A.b([B.LI,B.T,B.a22,B.aI,A.fV(B.CO,new A.aw7(a4),a)],t.p),B.q,B.k,B.aj),a,a)
+a3=A.bk(16)
 r=A.es(B.kT,1.5)
-q=A.U("CHECKOUT \u2014 Step 2 of 2",a,a,a,A.p(a3).ok.e,a,a)
-p=A.p(a3).ok.z
-p=A.U("Guest checkout \u2014 email, phone, and delivery address",a,a,a,p==null?a:p.ba(B.I),a,a)
+q=A.U("CHECKOUT \u2014 Step 2 of 2",a,a,a,A.p(a4).ok.e,a,a)
+p=A.p(a4).ok.z
+p=A.U("Guest checkout \u2014 email, phone, and delivery address. Payment is simulated for now and issues a tracking code immediately.",a,a,a,p==null?a:p.ba(B.I),a,a)
 o=A.lH(a,b.e,B.Mx,a,!1,a,B.bp,a,new A.aw8())
 n=A.lH(B.r2,b.f,B.MD,B.jE,!1,a,B.bp,a,new A.aw9())
 m=A.lH(a,b.r,B.MJ,B.cq,!1,a,B.bp,a,new A.awe())
@@ -101436,12 +101436,12 @@ f=A.T(new A.Y(s,new A.awi(),f),f.h("af.E"))
 e=b.x==null?a:new A.awj(b)
 i=A.aaz(B.MB,g,f,new A.cA("sector-"+A.l(j)+"-"+A.l(h),k),e,new A.awk(),i)
 e=A.lH(a,b.w,B.Mu,a,!1,a,B.bp,a,new A.awl())
-k=A.U("Payment method",a,a,a,A.p(a3).ok.x,a,a)
+k=A.U("Payment method",a,a,a,A.p(a4).ok.x,a,a)
 h=b.z
 j=t.p
-d=A.aMz(A.bY(a,A.b5(A.b([q,B.a0,p,B.bY,o,B.T,n,B.T,m,B.T,l,B.T,i,B.T,e,B.bY,k,B.T,new A.zS("MTN Mobile Money (MoMo)","Pay with MTN MoMo (USSD push)",B.KX,h===B.nW,new A.awa(b),a),B.a0,new A.zS("Airtel Money","Pay with Airtel Money",B.L1,h===B.Dr,new A.awb(b),a),B.a0,new A.zS("Visa / Bank Card","Debit or credit card",B.KP,h===B.Ds,new A.awc(b),a)],j),B.aD,B.k,B.n),B.m,a,a,new A.br(B.i,a,r,a2,B.P1,a,B.K),a,a,a,B.c1,a,a,a),b.d)
-c=new A.a_Y(a0,b.Q,new A.awd(b,a0),a)
-return a1.a.a>=900?new A.ay(B.pO,A.bD(A.b([A.bL(A.i5(d,a,a,B.a4),3),B.Cf,A.cl(c,a,360)],j),B.R,B.k,B.n,0,a),a):A.b5(A.b([A.bL(A.i5(d,a,B.cg,B.a4),1),c],j),B.q,B.k,B.n)}}
+d=A.aMz(A.bY(a,A.b5(A.b([q,B.a0,p,B.bY,o,B.T,n,B.T,m,B.T,l,B.T,i,B.T,e,B.bY,k,B.T,new A.zS("MTN Mobile Money (MoMo)",a0,B.KX,h===B.nW,new A.awa(b),a),B.a0,new A.zS("Airtel Money",a0,B.L1,h===B.Dr,new A.awb(b),a),B.a0,new A.zS("Visa / Bank Card",a0,B.KP,h===B.Ds,new A.awc(b),a)],j),B.aD,B.k,B.n),B.m,a,a,new A.br(B.i,a,r,a3,B.P1,a,B.K),a,a,a,B.c1,a,a,a),b.d)
+c=new A.a_Y(a1,b.Q,new A.awd(b,a1),a)
+return a2.a.a>=900?new A.ay(B.pO,A.bD(A.b([A.bL(A.i5(d,a,a,B.a4),3),B.Cf,A.cl(c,a,360)],j),B.R,B.k,B.n,0,a),a):A.b5(A.b([A.bL(A.i5(d,a,B.cg,B.a4),1),c],j),B.q,B.k,B.n)}}
 A.awn.prototype={
 $1(a){var s,r=this.a,q=r.c
 if(q==null)return
@@ -101587,7 +101587,7 @@ p=this.d
 m=p?q:this.e
 if(p)p=B.ne
 else{r=s.fC(n.grg())
-p=A.U("PLACE ORDER (TOTAL: "+(r+" RWF")+")",q,q,q,q,q,q)}o.push(A.fV(p,m,q))
+p=A.U("PAY NOW ("+(r+" RWF")+")",q,q,q,q,q,q)}o.push(A.fV(p,m,q))
 return A.d1(!1,B.F,!0,q,A.pv(!0,new A.ay(B.cg,A.b5(o,B.aD,B.k,B.aj),q),!1),B.m,B.i,8,q,q,q,q,q,B.an)}}
 A.aCc.prototype={
 $1(a){var s=null,r=a.a,q=a.b,p=A.bL(A.U(r.b+" \xd7 "+q,1,B.ah,s,s,s,s),1),o=$.hE().fC(r.d*q)
@@ -101775,12 +101775,12 @@ case 1:return A.A(q,r)}})
 return A.B($async$AM,r)},
 F(a){var s,r,q,p,o,n,m,l,k,j,i=this,h=null,g=A.bC(a,!0,t.d),f=A.ba(a,B.bG,t.w).w,e=!g.gqD()&&!i.r&&i.a.c.length!==0
 f=f.a.a>=900?32:16
-s=A.U("Order placed",h,h,h,A.p(a).ok.e,B.b6,h)
+s=A.U("Payment confirmed",h,h,h,A.p(a).ok.e,B.b6,h)
 r=A.p(a).ok.z
-r=A.U("Save your tracking code. You can follow this delivery without an account.",h,h,h,r==null?h:r.ba(B.I),B.b6,h)
+r=A.U("Test payment succeeded. Save your tracking code to follow this delivery.",h,h,h,r==null?h:r.ba(B.I),B.b6,h)
 q=A.bk(16)
 p=A.es(B.aK,1)
-o=A.U("GUEST TRACKING ID",h,h,h,A.p(a).ok.as,h,h)
+o=A.U("YOUR TRACKING CODE",h,h,h,A.p(a).ok.as,h,h)
 n=i.a.d
 m=A.p(a).ok.b
 n=A.aU9(n,m==null?h:m.fb(B.y,28))
