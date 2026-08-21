@@ -127,13 +127,13 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                'Order placed',
+                'Payment confirmed',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
               const SizedBox(height: 8),
               Text(
-                'Save your tracking code. You can follow this delivery without an account.',
+                'Test payment succeeded. Save your tracking code to follow this delivery.',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: AppColors.secondary,
@@ -150,7 +150,7 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
                 child: Column(
                   children: [
                     Text(
-                      'GUEST TRACKING ID',
+                      'YOUR TRACKING CODE',
                       style: Theme.of(context).textTheme.labelLarge,
                     ),
                     const SizedBox(height: 8),

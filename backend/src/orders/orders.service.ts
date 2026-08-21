@@ -22,6 +22,8 @@ import { GuestCheckoutDto } from './dto/guest-checkout.dto';
 import { OrdersGateway } from './orders.gateway';
 import { generateTrackingCode } from '../common/utils/ids';
 import { normalizeRwandaPhone } from '../common/utils/rwanda-phone';
+import { isMockPaymentMode } from '../common/utils/payment-mode';
+import { randomUUID } from 'crypto';
 import {
   DEFAULT_DELIVERY_FEE_RWF,
   JOB_EXPIRE_STOCK_HOLD,
@@ -162,12 +164,34 @@ export class OrdersService {
       });
     });
 
-    const ttlSeconds = Number(this.config.get('STOCK_HOLD_TTL_SECONDS') ?? 900);
-    await this.stockHolds.add(
-      JOB_EXPIRE_STOCK_HOLD,
-      { orderId: order.id },
-      { delay: ttlSeconds * 1000, removeOnComplete: true, jobId: `hold-${order.id}` },
-    );
+    const mockPayments = isMockPaymentMode(this.config);
+    if (mockPayments) {
+      await this.prisma.payment.create({
+        data: {
+          orderId: order.id,
+          method: paymentMethod,
+          status: PaymentStatus.SUCCESSFUL,
+          amountRwf: order.totalAmountRwf,
+          phone,
+          providerRef: `MOCK-${paymentMethod}-${randomUUID()}`,
+        },
+      });
+      await this.prisma.customerOrder.update({
+        where: { id: order.id },
+        data: { paymentStatus: PaymentStatus.SUCCESSFUL },
+      });
+    } else {
+      const ttlSeconds = Number(this.config.get('STOCK_HOLD_TTL_SECONDS') ?? 900);
+      try {
+        await this.stockHolds.add(
+          JOB_EXPIRE_STOCK_HOLD,
+          { orderId: order.id },
+          { delay: ttlSeconds * 1000, removeOnComplete: true, jobId: `hold-${order.id}` },
+        );
+      } catch (err) {
+        this.logger.warn(`Stock-hold queue unavailable: ${err}`);
+      }
+    }
 
     const vendorIds = [...new Set(order.items.map((i) => i.vendorId))];
     for (const vendorId of vendorIds) {
@@ -176,11 +200,16 @@ export class OrdersService {
         trackingCode: order.trackingCode,
         guestName: order.guestName,
         status: order.status,
+        paymentStatus: mockPayments ? PaymentStatus.SUCCESSFUL : order.paymentStatus,
         totalAmountRwf: order.totalAmountRwf,
         createdAt: order.createdAt,
       };
       this.gateway.notifyNewOrder(vendorId, payload);
-      await this.notifications.add(JOB_NOTIFY_VENDOR, { vendorId, ...payload });
+      try {
+        await this.notifications.add(JOB_NOTIFY_VENDOR, { vendorId, ...payload });
+      } catch (err) {
+        this.logger.warn(`Vendor notify queue unavailable: ${err}`);
+      }
     }
 
     this.logger.log(`Guest order ${order.trackingCode} created`);
@@ -189,7 +218,7 @@ export class OrdersService {
       trackingCode: order.trackingCode,
       orderId: order.id,
       status: order.status,
-      paymentStatus: order.paymentStatus,
+      paymentStatus: mockPayments ? PaymentStatus.SUCCESSFUL : order.paymentStatus,
       paymentMethod: order.paymentMethod,
       deliveryFeeRwf: order.deliveryFeeRwf,
       itemsTotalRwf: itemsTotal,
@@ -199,10 +228,11 @@ export class OrdersService {
       isGuest: order.isGuest,
       userId: order.userId,
       payment: {
-        requiresUssdPush: paymentMethod !== PaymentMethod.VISA_CARD,
+        requiresUssdPush: !mockPayments && paymentMethod !== PaymentMethod.VISA_CARD,
         initiateUrl: '/api/v1/payments/initiate',
         amountRwf: order.totalAmountRwf,
         currency: 'RWF',
+        testMode: mockPayments,
       },
     };
   }

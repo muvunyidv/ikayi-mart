@@ -184,7 +184,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Guest checkout — email, phone, and delivery address',
+              'Guest checkout — email, phone, and delivery address. Payment is simulated for now and issues a tracking code immediately.',
               style: Theme.of(
                 context,
               ).textTheme.bodyMedium?.copyWith(color: AppColors.secondary),
@@ -272,7 +272,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             const SizedBox(height: 12),
             _PaymentTile(
               title: 'MTN Mobile Money (MoMo)',
-              subtitle: 'Pay with MTN MoMo (USSD push)',
+              subtitle: 'Test mode — tracking code issued immediately',
               icon: Icons.phone_android,
               selected: _payment == _PaymentMethod.mtnMomo,
               onTap: () => setState(() => _payment = _PaymentMethod.mtnMomo),
@@ -280,7 +280,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             const SizedBox(height: 8),
             _PaymentTile(
               title: 'Airtel Money',
-              subtitle: 'Pay with Airtel Money',
+              subtitle: 'Test mode — tracking code issued immediately',
               icon: Icons.smartphone,
               selected: _payment == _PaymentMethod.airtelMoney,
               onTap: () =>
@@ -289,7 +289,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             const SizedBox(height: 8),
             _PaymentTile(
               title: 'Visa / Bank Card',
-              subtitle: 'Debit or credit card',
+              subtitle: 'Test mode — tracking code issued immediately',
               icon: Icons.credit_card,
               selected: _payment == _PaymentMethod.visaCard,
               onTap: () => setState(() => _payment = _PaymentMethod.visaCard),
@@ -501,7 +501,7 @@ class _OrderSummary extends StatelessWidget {
                         ),
                       )
                     : Text(
-                        'PLACE ORDER (TOTAL: ${formatRwf(cart.grandTotalRwf, suffix: true)})',
+                        'PAY NOW (${formatRwf(cart.grandTotalRwf, suffix: true)})',
                       ),
               ),
             ],

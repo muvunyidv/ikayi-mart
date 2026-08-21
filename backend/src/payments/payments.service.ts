@@ -18,6 +18,7 @@ import { PaymentGateway } from './gateways/payment-gateway.interface';
 import { OrdersGateway } from '../orders/orders.gateway';
 import { normalizeRwandaPhone } from '../common/utils/rwanda-phone';
 import { JOB_PROCESS_WEBHOOK, QUEUE_PAYMENTS, QUEUE_STOCK_HOLDS } from '../common/constants';
+import { isMockPaymentMode } from '../common/utils/payment-mode';
 
 @Injectable()
 export class PaymentsService {
@@ -49,7 +50,19 @@ export class PaymentsService {
       throw new NotFoundException('Order not found');
     }
     if (order.paymentStatus === PaymentStatus.SUCCESSFUL) {
-      throw new BadRequestException('Order is already paid');
+      const existing = order.payments[0];
+      return {
+        paymentId: existing?.id ?? null,
+        orderId: order.id,
+        trackingCode: order.trackingCode,
+        amountRwf: order.totalAmountRwf,
+        currency: 'RWF',
+        method: existing?.method ?? order.paymentMethod,
+        providerRef: existing?.providerRef ?? null,
+        ussdPushSent: false,
+        message: 'Payment already confirmed',
+        testMode: isMockPaymentMode(this.config),
+      };
     }
 
     const method = dto.method ?? order.paymentMethod;
@@ -59,6 +72,7 @@ export class PaymentsService {
       throw new BadRequestException('Enter a valid Rwanda phone number for MoMo / Airtel');
     }
 
+    const mock = isMockPaymentMode(this.config);
     const gateway = this.pickGateway(method);
     const result = await gateway.initiate({
       orderId: order.id,
@@ -72,7 +86,7 @@ export class PaymentsService {
       data: {
         orderId: order.id,
         method,
-        status: PaymentStatus.PENDING,
+        status: mock ? PaymentStatus.SUCCESSFUL : PaymentStatus.PENDING,
         amountRwf: order.totalAmountRwf,
         phone,
         providerRef: result.providerRef,
@@ -81,8 +95,23 @@ export class PaymentsService {
 
     await this.prisma.customerOrder.update({
       where: { id: order.id },
-      data: { paymentMethod: method, paymentStatus: PaymentStatus.PENDING },
+      data: {
+        paymentMethod: method,
+        paymentStatus: mock ? PaymentStatus.SUCCESSFUL : PaymentStatus.PENDING,
+      },
     });
+
+    if (mock) {
+      await this.stockHolds.remove(`hold-${order.id}`).catch(() => undefined);
+      for (const vendorId of [...new Set(order.items.map((i) => i.vendorId))]) {
+        this.ordersGateway.notifyOrderUpdated(vendorId, {
+          orderId: order.id,
+          trackingCode: order.trackingCode,
+          paymentStatus: PaymentStatus.SUCCESSFUL,
+          status: order.status,
+        });
+      }
+    }
 
     return {
       paymentId: payment.id,
@@ -92,8 +121,11 @@ export class PaymentsService {
       currency: 'RWF',
       method,
       providerRef: result.providerRef,
-      ussdPushSent: result.ussdPushSent,
-      message: result.message,
+      ussdPushSent: mock ? false : result.ussdPushSent,
+      message: mock
+        ? `Test payment confirmed. Tracking code ${order.trackingCode}.`
+        : result.message,
+      testMode: mock,
     };
   }
 
@@ -182,8 +214,7 @@ export class PaymentsService {
   }
 
   private pickGateway(method: PaymentMethod): PaymentGateway {
-    const mode = this.config.get<string>('PAYMENT_MODE', 'mock');
-    if (mode !== 'production') {
+    if (isMockPaymentMode(this.config)) {
       return this.mock;
     }
     if (method === PaymentMethod.AIRTEL_MONEY) {

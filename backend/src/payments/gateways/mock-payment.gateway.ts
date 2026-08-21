@@ -15,11 +15,8 @@ export class MockPaymentGateway implements PaymentGateway {
   async initiate(input: InitiatePaymentInput): Promise<InitiatePaymentResult> {
     return {
       providerRef: `MOCK-${input.method}-${randomUUID()}`,
-      ussdPushSent: input.method !== PaymentMethod.VISA_CARD,
-      message:
-        input.method === PaymentMethod.VISA_CARD
-          ? 'Card payment session created (mock). Confirm via webhook.'
-          : `USSD push sent to ${input.phone} (mock ${input.method}). Confirm via webhook.`,
+      ussdPushSent: false,
+      message: `Test payment confirmed for ${input.trackingCode}.`,
     };
   }
 
