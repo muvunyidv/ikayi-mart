@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
+import 'gis_sign_in_button.dart'
+    if (dart.library.js_util) 'gis_sign_in_button_web.dart';
 
 class GoogleSignInButton extends StatelessWidget {
   const GoogleSignInButton({
@@ -16,6 +18,9 @@ class GoogleSignInButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final gis = gisWebSignInButton(onPressed: onPressed, busy: busy);
+    if (gis != null) return gis;
+
     return OutlinedButton(
       onPressed: busy ? null : onPressed,
       style: OutlinedButton.styleFrom(

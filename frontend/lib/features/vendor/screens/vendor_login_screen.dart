@@ -84,6 +84,16 @@ class _VendorLoginScreenState extends State<VendorLoginScreen> {
       );
       return;
     }
+    if (auth.user?.isVendorStaff == true) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'This Google account is not a vendor. Continue shopping, or register a store with email.',
+        ),
+      ),
+    );
     context.go('/');
   }
 

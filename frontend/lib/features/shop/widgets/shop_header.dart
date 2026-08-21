@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/branding.dart';
 import '../../../core/models/models.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../state/auth_state.dart';
 import '../../../state/cart_state.dart';
 import '../../../state/catalog_state.dart';
 import '../../../state/navigation_state.dart';
@@ -45,6 +46,7 @@ class ShopHeader extends StatelessWidget {
     final cart = context.watch<CartState>();
     final catalog = context.watch<CatalogState>();
     final nav = context.watch<NavigationState>();
+    final auth = context.watch<AuthState>();
     final categories = catalog.categoryOptions;
 
     return Container(
@@ -115,14 +117,17 @@ class ShopHeader extends StatelessWidget {
                 onPressed: () => context.go('/tracking'),
                 icon: const Icon(Icons.local_shipping_outlined),
               ),
-              IconButton(
-                tooltip: 'Vendor dashboard',
-                onPressed: () {
-                  context.read<NavigationState>().setMode(AppMode.vendor);
-                  context.go('/vendor');
-                },
-                icon: const Icon(Icons.storefront_outlined),
-              ),
+              if (auth.isLoggedIn)
+                _AccountMenuButton(auth: auth)
+              else
+                IconButton(
+                  tooltip: 'Vendor dashboard',
+                  onPressed: () {
+                    context.read<NavigationState>().setMode(AppMode.vendor);
+                    context.go('/vendor');
+                  },
+                  icon: const Icon(Icons.storefront_outlined),
+                ),
             ],
           ),
           if (!isDesktop) ...[
@@ -297,6 +302,133 @@ class _CategoryDropdown extends StatelessWidget {
             const Icon(Icons.search, size: 20),
           ],
         ),
+      ),
+    );
+  }
+}
+
+enum _AccountAction { vendorDashboard, logout }
+
+class _AccountMenuButton extends StatelessWidget {
+  const _AccountMenuButton({required this.auth});
+
+  final AuthState auth;
+
+  @override
+  Widget build(BuildContext context) {
+    final user = auth.user;
+    return PopupMenuButton<_AccountAction>(
+      tooltip: 'Account',
+      offset: const Offset(0, 40),
+      onSelected: (action) async {
+        switch (action) {
+          case _AccountAction.vendorDashboard:
+            context.read<NavigationState>().setMode(AppMode.vendor);
+            context.go('/vendor');
+          case _AccountAction.logout:
+            await auth.logout();
+            if (!context.mounted) return;
+            context.read<NavigationState>().setMode(AppMode.shopper);
+            context.go('/');
+        }
+      },
+      itemBuilder: (context) {
+        return [
+          if (user != null)
+            PopupMenuItem<_AccountAction>(
+              enabled: false,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  Text(
+                    user.email,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.secondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (user != null) const PopupMenuDivider(),
+          if (user?.isVendorStaff == true)
+            const PopupMenuItem(
+              value: _AccountAction.vendorDashboard,
+              child: Row(
+                children: [
+                  Icon(Icons.storefront_outlined, size: 20),
+                  SizedBox(width: 12),
+                  Text('Vendor dashboard'),
+                ],
+              ),
+            ),
+          const PopupMenuItem(
+            value: _AccountAction.logout,
+            child: Row(
+              children: [
+                Icon(Icons.logout, size: 20),
+                SizedBox(width: 12),
+                Text('Log out'),
+              ],
+            ),
+          ),
+        ];
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: _UserAvatar(photoUrl: auth.avatarUrl),
+      ),
+    );
+  }
+}
+
+class _UserAvatar extends StatelessWidget {
+  const _UserAvatar({this.photoUrl});
+
+  final String? photoUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    const size = 32.0;
+    final url = photoUrl?.trim();
+    final placeholder = _placeholder();
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: ClipOval(
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: url == null || url.isEmpty
+              ? placeholder
+              : Image.network(
+                  url,
+                  fit: BoxFit.cover,
+                  gaplessPlayback: true,
+                  errorBuilder: (context, error, stackTrace) => placeholder,
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _placeholder() {
+    return const ColoredBox(
+      color: AppColors.primaryLight,
+      child: Icon(
+        Icons.person,
+        size: 20,
+        color: AppColors.primaryDeep,
       ),
     );
   }
