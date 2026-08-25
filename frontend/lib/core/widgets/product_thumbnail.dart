@@ -22,8 +22,17 @@ class ProductThumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = (width ?? height ?? 200).round().clamp(48, 800);
-    final src = CloudinaryImage.thumbnail(imageUrl, size: size);
+    // Storefront tiles fill their parent — keep the original Cloudinary URL so
+    // images stay sharp on high-DPI screens. Only fixed-size chips (orders,
+    // cart) request a DPR-aware thumbnail.
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final logical = width ?? height;
+    final src = logical == null
+        ? imageUrl
+        : CloudinaryImage.thumbnail(
+            imageUrl,
+            size: (logical * dpr).round().clamp(128, 1200),
+          );
 
     Widget image;
     if (src.isEmpty) {
@@ -34,6 +43,7 @@ class ProductThumbnail extends StatelessWidget {
         fit: fit,
         width: width,
         height: height,
+        filterQuality: FilterQuality.medium,
         gaplessPlayback: true,
         loadingBuilder: (context, child, progress) {
           if (progress == null) return child;
