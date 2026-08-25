@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_format.dart';
+import '../../../core/widgets/product_thumbnail.dart';
 import '../../../state/cart_state.dart';
 import '../widgets/checkout_choice_sheet.dart';
 
@@ -27,9 +28,9 @@ class _CartScreenState extends State<CartScreen> {
   void _applyPromo(CartState cart) {
     final code = _promoController.text.trim();
     if (code.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a promo code')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Enter a promo code')));
       return;
     }
     final ok = cart.applyPromoCode(code);
@@ -105,7 +106,7 @@ class _CartScreenState extends State<CartScreen> {
               children: [
                 Expanded(
                   flex: 3,
-                  child: SingleChildScrollView(child: items),
+                  child: SingleChildScrollView(primary: true, child: items),
                 ),
                 const SizedBox(width: 32),
                 SizedBox(width: 360, child: summary),
@@ -116,6 +117,7 @@ class _CartScreenState extends State<CartScreen> {
             children: [
               Expanded(
                 child: SingleChildScrollView(
+                  primary: true,
                   padding: const EdgeInsets.all(16),
                   child: items,
                 ),
@@ -164,17 +166,11 @@ class _CartItemsColumn extends StatelessWidget {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: SizedBox(
+                    child: ProductThumbnail(
+                      imageUrl: item.product.imageUrl,
                       width: 88,
                       height: 88,
-                      child: Image.network(
-                        item.product.imageUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => const ColoredBox(
-                          color: AppColors.surfaceHigh,
-                          child: Icon(Icons.image_outlined),
-                        ),
-                      ),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -210,10 +206,8 @@ class _CartItemsColumn extends StatelessWidget {
                           children: [
                             _QtyButton(
                               icon: Icons.remove,
-                              onPressed: () => cart.updateQuantity(
-                                index,
-                                item.quantity - 1,
-                              ),
+                              onPressed: () =>
+                                  cart.updateQuantity(index, item.quantity - 1),
                             ),
                             Padding(
                               padding: const EdgeInsets.symmetric(
@@ -226,10 +220,8 @@ class _CartItemsColumn extends StatelessWidget {
                             ),
                             _QtyButton(
                               icon: Icons.add,
-                              onPressed: () => cart.updateQuantity(
-                                index,
-                                item.quantity + 1,
-                              ),
+                              onPressed: () =>
+                                  cart.updateQuantity(index, item.quantity + 1),
                             ),
                             const Spacer(),
                             IconButton(
@@ -266,11 +258,7 @@ class _QtyButton extends StatelessWidget {
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: onPressed,
-        child: SizedBox(
-          width: 32,
-          height: 32,
-          child: Icon(icon, size: 16),
-        ),
+        child: SizedBox(width: 32, height: 32, child: Icon(icon, size: 16)),
       ),
     );
   }

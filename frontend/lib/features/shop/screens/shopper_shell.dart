@@ -1,7 +1,9 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/unclaimed_pointer_scroll.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../../state/catalog_state.dart';
 import '../../../state/navigation_state.dart';
@@ -67,18 +69,27 @@ class _ShopperShellState extends State<ShopperShell> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: ImigongoBackground(
-        child: SafeArea(
-          child: Column(
-            children: [
-              ShopHeader(
-                isDesktop: isDesktop,
-                searchController: _searchController,
-                searchFocusNode: _searchFocus,
-              ),
-              Expanded(child: widget.child),
-              const AppFooter(),
-            ],
+      body: Listener(
+        behavior: HitTestBehavior.opaque,
+        onPointerSignal: (PointerSignalEvent event) {
+          handleUnclaimedPointerScroll(
+            event,
+            PrimaryScrollController.maybeOf(context),
+          );
+        },
+        child: ImigongoBackground(
+          child: SafeArea(
+            child: Column(
+              children: [
+                ShopHeader(
+                  isDesktop: isDesktop,
+                  searchController: _searchController,
+                  searchFocusNode: _searchFocus,
+                ),
+                Expanded(child: widget.child),
+                const AppFooter(),
+              ],
+            ),
           ),
         ),
       ),

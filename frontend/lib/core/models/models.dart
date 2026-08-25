@@ -172,19 +172,41 @@ class OrderLineItem {
     required this.productName,
     required this.quantity,
     required this.unitPriceRwf,
+    this.productId,
+    this.imageUrl = '',
+    this.description = '',
     this.vendorName,
   });
 
+  final String? productId;
   final String productName;
+  final String imageUrl;
+  final String description;
   final int quantity;
   final int unitPriceRwf;
   final String? vendorName;
 
   int get totalRwf => unitPriceRwf * quantity;
 
+  String get shortDescription => description.trim();
+
   factory OrderLineItem.fromJson(Map<String, dynamic> json) {
+    final nested = json['product'];
+    final product = nested is Map<String, dynamic>
+        ? nested
+        : const <String, dynamic>{};
+
     return OrderLineItem(
-      productName: json['productName'] as String? ?? '',
+      productId: json['productId'] as String? ?? product['id'] as String?,
+      productName:
+          json['productName'] as String? ?? product['name'] as String? ?? '',
+      imageUrl:
+          json['imageUrl'] as String? ?? product['imageUrl'] as String? ?? '',
+      description:
+          json['description'] as String? ??
+          json['shortDescription'] as String? ??
+          product['description'] as String? ??
+          '',
       quantity: (json['quantity'] as num?)?.toInt() ?? 1,
       unitPriceRwf: (json['unitPriceRwf'] as num?)?.toInt() ?? 0,
       vendorName: json['vendorName'] as String?,

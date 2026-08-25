@@ -80,6 +80,8 @@ class ShopperSidebar extends StatelessWidget {
             ),
             Expanded(
               child: ListView(
+                physics: const NeverScrollableScrollPhysics(),
+                shrinkWrap: true,
                 padding: EdgeInsets.symmetric(horizontal: collapsed ? 8 : 12),
                 children: [
                   ...cats.map((cat) {

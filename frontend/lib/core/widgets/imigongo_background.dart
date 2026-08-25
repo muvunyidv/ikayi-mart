@@ -69,14 +69,22 @@ class ImigongoBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     return ColoredBox(
       color: _resolvedBackground,
-      child: CustomPaint(
-        painter: _ImigongoPainter(
-          variant: variant,
-          strokeColor: _strokeColor,
-          primaryColor: AppColors.primaryOrange,
-          patternOpacity: _resolvedOpacity,
-        ),
-        child: child,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          IgnorePointer(
+            child: CustomPaint(
+              painter: _ImigongoPainter(
+                variant: variant,
+                strokeColor: _strokeColor,
+                primaryColor: AppColors.primaryOrange,
+                patternOpacity: _resolvedOpacity,
+              ),
+              child: const SizedBox.expand(),
+            ),
+          ),
+          child,
+        ],
       ),
     );
   }
@@ -233,8 +241,7 @@ class _ImigongoPainter extends CustomPainter {
     canvas.drawRect(Offset.zero & size, fade);
 
     const zig = 14.0;
-    final amplitude =
-        (size.height * 0.28).clamp(4.0, 9.0).toDouble();
+    final amplitude = (size.height * 0.28).clamp(4.0, 9.0).toDouble();
     final midY = size.height / 2;
 
     final mainPaint = Paint()

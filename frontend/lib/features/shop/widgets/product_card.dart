@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/models/models.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_format.dart';
+import '../../../core/widgets/product_thumbnail.dart';
 
 class ProductCard extends StatelessWidget {
   const ProductCard({
@@ -50,17 +51,9 @@ class ProductCard extends StatelessWidget {
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(12),
                       ),
-                      child: Image.network(
-                        product.imageUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => Container(
-                          color: AppColors.surfaceHigh,
-                          alignment: Alignment.center,
-                          child: const Icon(
-                            Icons.image_outlined,
-                            color: AppColors.secondary,
-                          ),
-                        ),
+                      child: ProductThumbnail(
+                        imageUrl: product.imageUrl,
+                        borderRadius: BorderRadius.zero,
                       ),
                     ),
                     if (product.badge != null)
@@ -124,9 +117,9 @@ class ProductCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontSize: 14,
-                            height: 1.3,
-                          ),
+                        fontSize: 14,
+                        height: 1.3,
+                      ),
                     ),
                     if (product.originLabel != null) ...[
                       const SizedBox(height: 4),
@@ -135,9 +128,9 @@ class ProductCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                              color: AppColors.secondary,
-                              fontSize: 10,
-                            ),
+                          color: AppColors.secondary,
+                          fontSize: 10,
+                        ),
                       ),
                     ],
                     const SizedBox(height: 8),
@@ -146,11 +139,11 @@ class ProductCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: AppColors.primaryOrange,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.2,
-                          ),
+                        color: AppColors.primaryOrange,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
+                      ),
                     ),
                   ],
                 ),

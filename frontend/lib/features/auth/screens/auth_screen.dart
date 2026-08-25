@@ -93,30 +93,30 @@ class _AuthScreenState extends State<AuthScreen> {
     final auth = context.read<AuthState>();
     final ok = _registering
         ? _vendorRegister
-            ? await auth.registerVendor(
-                email: _email.text.trim(),
-                password: _password.text,
-                name: _name.text.trim(),
-                storeName: _storeName.text.trim(),
-                phone: normalizeRwandaPhone(_phone.text) ?? _phone.text.trim(),
-              )
-            : await auth.register(
-                email: _email.text.trim(),
-                password: _password.text,
-                name: _name.text.trim(),
-                phone: normalizeRwandaPhone(_phone.text) ?? _phone.text.trim(),
-              )
-        : await auth.login(
-            email: _email.text.trim(),
-            password: _password.text,
-          );
+              ? await auth.registerVendor(
+                  email: _email.text.trim(),
+                  password: _password.text,
+                  name: _name.text.trim(),
+                  storeName: _storeName.text.trim(),
+                  phone:
+                      normalizeRwandaPhone(_phone.text) ?? _phone.text.trim(),
+                )
+              : await auth.register(
+                  email: _email.text.trim(),
+                  password: _password.text,
+                  name: _name.text.trim(),
+                  phone:
+                      normalizeRwandaPhone(_phone.text) ?? _phone.text.trim(),
+                )
+        : await auth.login(email: _email.text.trim(), password: _password.text);
     if (!mounted) return;
     setState(() => _busy = false);
     if (!ok) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            auth.error ?? (_registering ? 'Registration failed' : 'Login failed'),
+            auth.error ??
+                (_registering ? 'Registration failed' : 'Login failed'),
           ),
         ),
       );
@@ -133,9 +133,9 @@ class _AuthScreenState extends State<AuthScreen> {
     setState(() => _googleBusy = false);
     if (!ok) {
       if (auth.error == null) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(auth.error!)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(auth.error!)));
       return;
     }
     _routeAfterAuth(auth);
@@ -148,11 +148,11 @@ class _AuthScreenState extends State<AuthScreen> {
         : (widget.vendorContext ? 'Vendor login' : 'Sign in');
     final subtitle = _registering
         ? (_vendorRegister
-            ? 'Register your store to list products and manage orders.'
-            : 'Save addresses, track orders, and check out faster next time.')
+              ? 'Register your store to list products and manage orders.'
+              : 'Save addresses, track orders, and check out faster next time.')
         : (widget.vendorContext
-            ? 'Sign in to manage inventory, orders, and payouts.'
-            : 'Sign in to track orders and use saved checkout details.');
+              ? 'Sign in to manage inventory, orders, and payouts.'
+              : 'Sign in to track orders and use saved checkout details.');
 
     return ImigongoBackground(
       child: Scaffold(
@@ -173,6 +173,7 @@ class _AuthScreenState extends State<AuthScreen> {
             : null,
         body: Center(
           child: SingleChildScrollView(
+            primary: true,
             padding: const EdgeInsets.all(24),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
@@ -208,8 +209,8 @@ class _AuthScreenState extends State<AuthScreen> {
                               ),
                               validator: (v) =>
                                   (v == null || v.trim().length < 2)
-                                      ? 'Enter your name'
-                                      : null,
+                                  ? 'Enter your name'
+                                  : null,
                             ),
                             const SizedBox(height: 12),
                             if (_vendorRegister && widget.vendorContext) ...[
@@ -225,8 +226,8 @@ class _AuthScreenState extends State<AuthScreen> {
                                 ),
                                 validator: (v) =>
                                     (v == null || v.trim().length < 2)
-                                        ? 'Enter a store name'
-                                        : null,
+                                    ? 'Enter a store name'
+                                    : null,
                               ),
                               const SizedBox(height: 12),
                             ],
@@ -234,11 +235,14 @@ class _AuthScreenState extends State<AuthScreen> {
                               controller: _phone,
                               keyboardType: TextInputType.phone,
                               textInputAction: TextInputAction.next,
-                              autofillHints: const [AutofillHints.telephoneNumber],
+                              autofillHints: const [
+                                AutofillHints.telephoneNumber,
+                              ],
                               decoration: const InputDecoration(
                                 labelText: 'Phone number',
                                 hintText: '+250 7XX XXX XXX',
-                                helperText: 'Rwandan mobile (MTN 78/79, Airtel 72/73)',
+                                helperText:
+                                    'Rwandan mobile (MTN 78/79, Airtel 72/73)',
                               ),
                               validator: rwandaPhoneValidator,
                             ),
@@ -249,11 +253,12 @@ class _AuthScreenState extends State<AuthScreen> {
                             keyboardType: TextInputType.emailAddress,
                             textInputAction: TextInputAction.next,
                             autofillHints: const [AutofillHints.email],
-                            decoration: const InputDecoration(labelText: 'Email'),
-                            validator: (v) =>
-                                (v == null || !v.contains('@'))
-                                    ? 'Enter a valid email'
-                                    : null,
+                            decoration: const InputDecoration(
+                              labelText: 'Email',
+                            ),
+                            validator: (v) => (v == null || !v.contains('@'))
+                                ? 'Enter a valid email'
+                                : null,
                           ),
                           const SizedBox(height: 12),
                           TextFormField(
@@ -270,13 +275,14 @@ class _AuthScreenState extends State<AuthScreen> {
                             decoration: const InputDecoration(
                               labelText: 'Password',
                             ),
-                            onFieldSubmitted:
-                                _registering || _busy ? null : (_) => _submit(),
+                            onFieldSubmitted: _registering || _busy
+                                ? null
+                                : (_) => _submit(),
                             validator: _registering
                                 ? PasswordRules.validator
                                 : (v) => (v == null || v.length < 8)
-                                    ? 'Min 8 characters'
-                                    : null,
+                                      ? 'Min 8 characters'
+                                      : null,
                           ),
                           if (_registering)
                             PasswordStrengthMeter(password: _password.text),
@@ -300,9 +306,11 @@ class _AuthScreenState extends State<AuthScreen> {
                               CheckboxListTile(
                                 contentPadding: EdgeInsets.zero,
                                 value: _vendorRegister,
-                                onChanged: (v) =>
-                                    setState(() => _vendorRegister = v ?? false),
-                                controlAffinity: ListTileControlAffinity.leading,
+                                onChanged: (v) => setState(
+                                  () => _vendorRegister = v ?? false,
+                                ),
+                                controlAffinity:
+                                    ListTileControlAffinity.leading,
                                 title: Text(
                                   'I want to sell on IKAYIMART',
                                   style: Theme.of(context).textTheme.bodyMedium,
@@ -321,8 +329,8 @@ class _AuthScreenState extends State<AuthScreen> {
                                   ),
                                   validator: (v) =>
                                       (v == null || v.trim().length < 2)
-                                          ? 'Enter a store name'
-                                          : null,
+                                      ? 'Enter a store name'
+                                      : null,
                                 ),
                               ],
                             ],
@@ -353,9 +361,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                 ),
                                 child: Text(
                                   'or',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyMedium
+                                  style: Theme.of(context).textTheme.bodyMedium
                                       ?.copyWith(color: AppColors.secondary),
                                 ),
                               ),
@@ -376,13 +382,13 @@ class _AuthScreenState extends State<AuthScreen> {
                                 _registering
                                     ? 'Already have an account?'
                                     : "Don't have an account?",
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
+                                style: Theme.of(context).textTheme.bodyMedium
                                     ?.copyWith(color: AppColors.secondary),
                               ),
                               TextButton(
-                                onPressed: _busy || _googleBusy ? null : _toggleMode,
+                                onPressed: _busy || _googleBusy
+                                    ? null
+                                    : _toggleMode,
                                 child: Text(
                                   _registering
                                       ? 'Sign in'

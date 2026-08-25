@@ -35,7 +35,9 @@ import {
 const ORDER_INCLUDE = {
   items: {
     include: {
-      product: { select: { id: true, name: true, imageUrl: true } },
+      product: {
+        select: { id: true, name: true, imageUrl: true, description: true },
+      },
       vendor: { select: { id: true, storeName: true } },
     },
   },
@@ -396,7 +398,10 @@ export class OrdersService {
       userId: order.userId,
       createdAt: order.createdAt,
       items: order.items.map((i) => ({
+        productId: i.productId,
         productName: i.product.name,
+        imageUrl: i.product.imageUrl,
+        description: i.product.description,
         quantity: i.quantity,
         unitPriceRwf: i.unitPriceRwf,
         selectedVariants: i.selectedVariants,
@@ -424,6 +429,7 @@ export class OrdersService {
         productId: i.productId,
         productName: i.product.name,
         imageUrl: i.product.imageUrl,
+        description: i.product.description,
         quantity: i.quantity,
         unitPriceRwf: i.unitPriceRwf,
         selectedVariants: i.selectedVariants,

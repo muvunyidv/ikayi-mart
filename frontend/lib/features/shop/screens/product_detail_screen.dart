@@ -25,31 +25,39 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   int _imageIndex = 0;
   final Map<String, String> _selectedVariants = {};
-  final _scrollController = ScrollController();
   Product? _product;
   bool _loading = true;
   String? _error;
   int _recommendedShown = _recommendedBatchSize;
   bool _loadingMore = false;
+  ScrollController? _scrollController;
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final primary = PrimaryScrollController.maybeOf(context);
+    if (primary == _scrollController) return;
+    _scrollController?.removeListener(_onScroll);
+    _scrollController = primary;
+    _scrollController?.addListener(_onScroll);
+  }
+
+  @override
   void dispose() {
-    _scrollController
-      ..removeListener(_onScroll)
-      ..dispose();
+    _scrollController?.removeListener(_onScroll);
     super.dispose();
   }
 
   void _onScroll() {
-    if (!_scrollController.hasClients || _loadingMore) return;
-    final pos = _scrollController.position;
+    final controller = _scrollController;
+    if (controller == null || !controller.hasClients || _loadingMore) return;
+    final pos = controller.position;
     if (pos.pixels >= pos.maxScrollExtent - 280) {
       _loadMoreRecommended();
     }
@@ -70,8 +78,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadingMore = false;
-      if (!mounted || !_scrollController.hasClients) return;
-      final pos = _scrollController.position;
+      final controller = _scrollController;
+      if (!mounted || controller == null || !controller.hasClients) return;
+      final pos = controller.position;
       if (pos.maxScrollExtent <= pos.pixels + 280) {
         _loadMoreRecommended();
       }
@@ -344,7 +353,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final compactChrome = width < kPhoneBreakpoint;
 
     return SingleChildScrollView(
-      controller: _scrollController,
+      primary: true,
       padding: EdgeInsets.all(isDesktop ? 32 : 16),
       child: Center(
         child: ConstrainedBox(
@@ -382,102 +391,101 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       ),
               ),
               const SizedBox(height: 8),
-                  if (isDesktop)
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: gallery),
-                        const SizedBox(width: 40),
-                        Expanded(child: details),
-                      ],
-                    )
-                  else ...[
-                    gallery,
-                    const SizedBox(height: 24),
-                    details,
+              if (isDesktop)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: gallery),
+                    const SizedBox(width: 40),
+                    Expanded(child: details),
                   ],
-                  if (moreFromVendor.isNotEmpty) ...[
-                    const SizedBox(height: 40),
-                    Text(
-                      'MORE FROM THIS VENDOR',
-                      style: Theme.of(context).textTheme.labelLarge,
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      height: 280,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: moreFromVendor.length,
-                        separatorBuilder: (_, _) => const SizedBox(width: 12),
-                        itemBuilder: (context, index) {
-                          final item = moreFromVendor[index];
-                          return SizedBox(
-                            width: 180,
-                            child: ProductCard(
-                              product: item,
-                              onTap: () => _openProduct(item),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                  if (recommended.isNotEmpty) ...[
-                    const SizedBox(height: 40),
-                    Text(
-                      'RECOMMENDED',
-                      style: Theme.of(context).textTheme.labelLarge,
-                    ),
-                    const SizedBox(height: 16),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final cols = productCrossAxisCount(
+                )
+              else ...[
+                gallery,
+                const SizedBox(height: 24),
+                details,
+              ],
+              if (moreFromVendor.isNotEmpty) ...[
+                const SizedBox(height: 40),
+                Text(
+                  'MORE FROM THIS VENDOR',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 280,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: moreFromVendor.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 12),
+                    itemBuilder: (context, index) {
+                      final item = moreFromVendor[index];
+                      return SizedBox(
+                        width: 180,
+                        child: ProductCard(
+                          product: item,
+                          onTap: () => _openProduct(item),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+              if (recommended.isNotEmpty) ...[
+                const SizedBox(height: 40),
+                Text(
+                  'RECOMMENDED',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+                const SizedBox(height: 16),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final cols = productCrossAxisCount(
+                      constraints.maxWidth,
+                      max: 3,
+                    );
+                    final gap = constraints.maxWidth >= kTabletBreakpoint
+                        ? 16.0
+                        : 12.0;
+                    return GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: recommended.length,
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: cols,
+                        mainAxisSpacing: gap,
+                        crossAxisSpacing: gap,
+                        childAspectRatio: productCardAspectRatio(
                           constraints.maxWidth,
-                          max: 3,
-                        );
-                        final gap = constraints.maxWidth >= kTabletBreakpoint
-                            ? 16.0
-                            : 12.0;
-                        return GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: recommended.length,
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: cols,
-                                mainAxisSpacing: gap,
-                                crossAxisSpacing: gap,
-                                childAspectRatio: productCardAspectRatio(
-                                  constraints.maxWidth,
-                                ),
-                              ),
-                          itemBuilder: (context, index) {
-                            final item = recommended[index];
-                            return ProductCard(
-                              product: item,
-                              onTap: () => _openProduct(item),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                    if (hasMoreRecommended)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 20),
-                        child: Center(
-                          child: SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
                         ),
                       ),
-                  ],
-                ],
-              ),
-            ),
+                      itemBuilder: (context, index) {
+                        final item = recommended[index];
+                        return ProductCard(
+                          product: item,
+                          onTap: () => _openProduct(item),
+                        );
+                      },
+                    );
+                  },
+                ),
+                if (hasMoreRecommended)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Center(
+                      child: SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  ),
+              ],
+            ],
           ),
-        );
+        ),
+      ),
+    );
   }
 
   void _openProduct(Product item) {

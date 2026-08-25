@@ -10,6 +10,8 @@ import '../../../core/models/models.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_format.dart';
+import '../../../core/widgets/shop_scroll_view.dart';
+import '../../orders/widgets/order_item_tile.dart';
 
 class OrderTrackingScreen extends StatefulWidget {
   const OrderTrackingScreen({super.key, this.initialCode});
@@ -119,62 +121,58 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     final width = MediaQuery.sizeOf(context).width;
     final isDesktop = width >= kDesktopBreakpoint;
 
-    return SingleChildScrollView(
+    return ShopScrollView(
       padding: EdgeInsets.all(isDesktop ? 32 : 16),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Track your order',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Enter your guest tracking code to see live delivery status.',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: AppColors.secondary),
-              ),
-              const SizedBox(height: 20),
-              Form(
-                child: isDesktop
-                    ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: _codeField()),
-                          const SizedBox(width: 12),
-                          SizedBox(width: 180, child: _trackButton()),
-                        ],
-                      )
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _codeField(),
-                          const SizedBox(height: 12),
-                          _trackButton(),
-                        ],
-                      ),
-              ),
-              if (_loading) ...[
-                const SizedBox(height: 32),
-                const Center(child: CircularProgressIndicator()),
-              ] else if (_error != null && _order == null) ...[
-                const SizedBox(height: 24),
-                _MessageCard(
-                  icon: Icons.error_outline,
-                  color: AppColors.error,
-                  message: _error!,
-                ),
-              ] else if (_order != null) ...[
-                const SizedBox(height: 28),
-                _OrderStatusCard(order: _order!),
-              ],
-            ],
+      maxContentWidth: 720,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Track your order',
+            style: Theme.of(context).textTheme.headlineMedium,
           ),
-        ),
+          const SizedBox(height: 8),
+          Text(
+            'Enter your guest tracking code to see live delivery status.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: AppColors.secondary),
+          ),
+          const SizedBox(height: 20),
+          Form(
+            child: isDesktop
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: _codeField()),
+                      const SizedBox(width: 12),
+                      SizedBox(width: 180, child: _trackButton()),
+                    ],
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _codeField(),
+                      const SizedBox(height: 12),
+                      _trackButton(),
+                    ],
+                  ),
+          ),
+          if (_loading) ...[
+            const SizedBox(height: 32),
+            const Center(child: CircularProgressIndicator()),
+          ] else if (_error != null && _order == null) ...[
+            const SizedBox(height: 24),
+            _MessageCard(
+              icon: Icons.error_outline,
+              color: AppColors.error,
+              message: _error!,
+            ),
+          ] else if (_order != null) ...[
+            const SizedBox(height: 28),
+            _OrderStatusCard(order: _order!),
+          ],
+        ],
       ),
     );
   }
@@ -327,7 +325,8 @@ class _OrderStatusCard extends StatelessWidget {
             _MessageCard(
               icon: Icons.report_outlined,
               color: AppColors.error,
-              message: order.supportTicket ?? 'An issue was reported on this order.',
+              message:
+                  order.supportTicket ?? 'An issue was reported on this order.',
             ),
           ],
           if (order.status == OrderStatus.shipped) ...[
@@ -341,29 +340,19 @@ class _OrderStatusCard extends StatelessWidget {
             _MessageCard(
               icon: Icons.home_outlined,
               color: AppColors.primaryOrange,
-              message: 'Delivered to ${order.landmark}, ${order.locationLabel}.',
+              message:
+                  'Delivered to ${order.landmark}, ${order.locationLabel}.',
             ),
           ],
           const SizedBox(height: 20),
           Text('Items', style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 8),
-          ...order.items.map(
-            (item) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '${item.productName} × ${item.quantity}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  Text(formatRwf(item.totalRwf, suffix: true)),
-                ],
-              ),
-            ),
-          ),
+          const SizedBox(height: 12),
+          ...[
+            for (var i = 0; i < order.items.length; i++) ...[
+              OrderItemTile(item: order.items[i]),
+              if (i < order.items.length - 1) const SizedBox(height: 12),
+            ],
+          ],
         ],
       ),
     );

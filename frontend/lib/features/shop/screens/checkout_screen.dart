@@ -105,7 +105,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final auth = context.read<AuthState>();
     final loggedIn = auth.isLoggedIn;
     try {
-      final phone = normalizeRwandaPhone(_phoneController.text.trim()) ??
+      final phone =
+          normalizeRwandaPhone(_phoneController.text.trim()) ??
           _phoneController.text.trim();
       final district = _district!;
       final sector = _sector!;
@@ -239,8 +240,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 labelText: 'Email',
                 helperText: 'Order confirmation and optional account later',
               ),
-              validator: (v) =>
-                  (v == null || !v.contains('@')) ? 'Enter a valid email' : null,
+              validator: (v) => (v == null || !v.contains('@'))
+                  ? 'Enter a valid email'
+                  : null,
             ),
             const SizedBox(height: 12),
             TextFormField(
@@ -341,7 +343,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               children: [
                 Expanded(
                   flex: 3,
-                  child: SingleChildScrollView(child: form),
+                  child: SingleChildScrollView(primary: true, child: form),
                 ),
                 const SizedBox(width: 32),
                 SizedBox(width: 360, child: summary),
@@ -352,6 +354,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             children: [
               Expanded(
                 child: SingleChildScrollView(
+                  primary: true,
                   padding: const EdgeInsets.all(16),
                   child: form,
                 ),

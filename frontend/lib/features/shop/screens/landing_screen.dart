@@ -19,16 +19,13 @@ class LandingScreen extends StatefulWidget {
 }
 
 class _LandingScreenState extends State<LandingScreen> {
-  final _scrollController = ScrollController();
   final Set<String> _favorites = {};
 
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  List<Product> _filtered(List<Product> products, String category, String query) {
+  List<Product> _filtered(
+    List<Product> products,
+    String category,
+    String query,
+  ) {
     final byCat = category == 'All'
         ? products
         : products.where((p) => p.category == category).toList();
@@ -80,7 +77,7 @@ class _LandingScreenState extends State<LandingScreen> {
           ),
         Expanded(
           child: CustomScrollView(
-            controller: _scrollController,
+            primary: true,
             slivers: [
               if (!isDesktop)
                 SliverToBoxAdapter(
@@ -164,7 +161,8 @@ class _LandingScreenState extends State<LandingScreen> {
                           Text(catalog.error!, textAlign: TextAlign.center),
                           const SizedBox(height: 12),
                           ElevatedButton(
-                            onPressed: () => context.read<CatalogState>().load(),
+                            onPressed: () =>
+                                context.read<CatalogState>().load(),
                             child: const Text('Retry'),
                           ),
                         ],
