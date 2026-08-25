@@ -86,7 +86,24 @@ class AuthState extends ChangeNotifier {
     required String email,
     required String password,
     required String name,
+    required String phone,
+  }) async {
+    return _authenticate(
+      () => _api.register(
+        email: email,
+        password: password,
+        name: name,
+        phone: phone,
+      ),
+    );
+  }
+
+  Future<bool> registerVendor({
+    required String email,
+    required String password,
+    required String name,
     required String storeName,
+    required String phone,
   }) async {
     return _authenticate(
       () => _api.registerVendor(
@@ -94,8 +111,33 @@ class AuthState extends ChangeNotifier {
         password: password,
         name: name,
         storeName: storeName,
+        phone: phone,
       ),
     );
+  }
+
+  void applySavedCheckout({
+    required String phone,
+    required String district,
+    required String sector,
+    required String landmark,
+  }) {
+    if (user == null) return;
+    user = user!.copyWith(
+      phone: phone,
+      district: district,
+      sector: sector,
+      landmark: landmark,
+    );
+    notifyListeners();
+  }
+
+  Future<void> refreshProfile() async {
+    if (!isLoggedIn) return;
+    try {
+      user = await _api.me();
+      notifyListeners();
+    } catch (_) {}
   }
 
   Future<bool> loginWithGoogle({String? orderId}) {

@@ -1,4 +1,6 @@
-/** Rwanda mobile: +250 7XX XXX XXX or 07XX XXX XXX (MTN 78/79, Airtel 72/73, others 7X). */
+/** Rwanda mobile: +250 7XX XXX XXX or 07XX XXX XXX (MTN 78/79, Airtel 72/73). */
+const LOCAL_MOBILE = /^7[2389]\d{7}$/;
+
 export function normalizeRwandaPhone(input: string): string | null {
   const digits = input.replace(/\D/g, '');
   let local = digits;
@@ -7,7 +9,7 @@ export function normalizeRwandaPhone(input: string): string | null {
   } else if (local.startsWith('0')) {
     local = local.slice(1);
   }
-  if (!/^7[2-9]\d{7}$/.test(local)) {
+  if (!LOCAL_MOBILE.test(local)) {
     return null;
   }
   return `+250${local}`;

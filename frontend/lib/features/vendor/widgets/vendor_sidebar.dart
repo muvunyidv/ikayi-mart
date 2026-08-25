@@ -243,7 +243,6 @@ class _VendorProfileFooter extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.settings_outlined, size: 18),
           ],
         ),
       ),

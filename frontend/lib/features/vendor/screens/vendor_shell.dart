@@ -26,7 +26,12 @@ class VendorShell extends StatelessWidget {
       return const VendorLoginScreen();
     }
     if (!auth.user!.isVendorStaff) {
-      return const VendorLoginScreen();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        context.read<NavigationState>().setMode(AppMode.shopper);
+        context.go('/');
+      });
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final nav = context.watch<NavigationState>();

@@ -9,6 +9,7 @@ import '../../../core/constants/rwanda_locations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_format.dart';
+import '../../../core/utils/rwanda_phone.dart';
 import '../../../state/cart_state.dart';
 import '../../../state/catalog_state.dart';
 import '../../../state/navigation_state.dart';
@@ -41,15 +42,36 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final nav = context.read<NavigationState>();
-      setState(() {
-        _district = nav.selectedDistrict;
-        _sector = nav.selectedSector;
-      });
       final auth = context.read<AuthState>();
-      if (auth.user != null) {
-        _nameController.text = auth.user!.name;
-        _emailController.text = auth.user!.email;
-      }
+      final user = auth.user;
+      setState(() {
+        if (auth.isLoggedIn && user != null) {
+          _nameController.text = user.name;
+          _emailController.text = user.email;
+          if (user.phone != null && user.phone!.isNotEmpty) {
+            _phoneController.text = user.phone!;
+          }
+          if (user.landmark != null && user.landmark!.isNotEmpty) {
+            _landmarkController.text = user.landmark!;
+          }
+          final savedDistrict = user.district;
+          final savedSector = user.sector;
+          if (savedDistrict != null &&
+              RwandaLocations.districtNames.contains(savedDistrict)) {
+            _district = savedDistrict;
+            final sectors = RwandaLocations.sectorsFor(savedDistrict);
+            if (savedSector != null && sectors.contains(savedSector)) {
+              _sector = savedSector;
+            }
+          } else {
+            _district = nav.selectedDistrict;
+            _sector = nav.selectedSector;
+          }
+        } else {
+          _district = nav.selectedDistrict;
+          _sector = nav.selectedSector;
+        }
+      });
       context.read<IkayiApi>().wake();
     });
   }
@@ -80,15 +102,23 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     setState(() => _placing = true);
     final api = context.read<IkayiApi>();
+    final auth = context.read<AuthState>();
+    final loggedIn = auth.isLoggedIn;
     try {
+      final phone = normalizeRwandaPhone(_phoneController.text.trim()) ??
+          _phoneController.text.trim();
+      final district = _district!;
+      final sector = _sector!;
+      final landmark = _landmarkController.text.trim();
       final result = await api.guestCheckout(
         guestName: _nameController.text.trim(),
         email: _emailController.text.trim(),
-        phone: _phoneController.text.trim(),
-        district: _district!,
-        sector: _sector!,
-        landmark: _landmarkController.text.trim(),
+        phone: phone,
+        district: district,
+        sector: sector,
+        landmark: landmark,
         paymentMethod: _apiPaymentMethod,
+        isGuest: !loggedIn,
         items: cart.items
             .map(
               (item) => {
@@ -101,6 +131,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             .toList(),
       );
       if (!mounted) return;
+      if (loggedIn) {
+        auth.applySavedCheckout(
+          phone: phone,
+          district: district,
+          sector: sector,
+          landmark: landmark,
+        );
+        unawaited(auth.refreshProfile());
+      }
       final totalLabel = formatRwf(result.totalAmountRwf, suffix: true);
       cart.clear();
       unawaited(context.read<CatalogState>().load());
@@ -127,6 +166,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<CartState>();
+    final auth = context.watch<AuthState>();
     final width = MediaQuery.sizeOf(context).width;
     final isDesktop = width >= kDesktopBreakpoint;
     final sectors = _district == null
@@ -176,7 +216,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Guest checkout — email, phone, and delivery address. Payment is simulated for now and issues a tracking code immediately.',
+              auth.isLoggedIn
+                  ? 'Review or update your saved shipping details. Changes on this order are saved to your profile.'
+                  : 'Guest checkout — email, phone, and delivery address. Payment is simulated for now and issues a tracking code immediately.',
               style: Theme.of(
                 context,
               ).textTheme.bodyMedium?.copyWith(color: AppColors.secondary),
@@ -207,15 +249,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               decoration: const InputDecoration(
                 labelText: 'Phone Number',
                 hintText: '+250 7XX XXX XXX',
-                helperText: 'Required for MoMo & SMS guest tracking',
+                helperText: 'Required for MoMo & SMS tracking',
               ),
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Phone is required';
-                if (v.replaceAll(RegExp(r'\D'), '').length < 10) {
-                  return 'Enter a valid Rwanda phone number';
-                }
-                return null;
-              },
+              validator: rwandaPhoneValidator,
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(

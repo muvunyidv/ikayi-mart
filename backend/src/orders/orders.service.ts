@@ -65,8 +65,9 @@ export class OrdersService {
     @InjectQueue(QUEUE_NOTIFICATIONS) private readonly notifications: Queue,
   ) {}
 
-  async guestCheckout(dto: GuestCheckoutDto) {
-    if (dto.isGuest === false) {
+  async guestCheckout(dto: GuestCheckoutDto, user?: JwtPayload) {
+    const signedIn = Boolean(user?.sub);
+    if (dto.isGuest === false && !signedIn) {
       throw new UnauthorizedException(
         'Sign in is required when isGuest is false',
       );
@@ -146,7 +147,8 @@ export class OrdersService {
           status: OrderStatus.PENDING,
           paymentMethod,
           paymentStatus: PaymentStatus.PENDING,
-          isGuest: true,
+          isGuest: !signedIn,
+          userId: signedIn ? user!.sub : undefined,
           items: {
             create: merged.map((item) => {
               const product = productMap.get(item.productId)!;
@@ -163,6 +165,18 @@ export class OrdersService {
         include: ORDER_INCLUDE,
       });
     });
+
+    if (signedIn && user) {
+      await this.prisma.user.update({
+        where: { id: user.sub },
+        data: {
+          phone,
+          district: dto.district.trim(),
+          sector: dto.sector.trim(),
+          landmark: dto.landmark.trim(),
+        },
+      });
+    }
 
     const mockPayments = isMockPaymentMode(this.config);
     if (mockPayments) {
@@ -244,7 +258,10 @@ export class OrdersService {
     return this.toPublicOrder(order);
   }
 
-  async listForCustomer(user: JwtPayload) {
+  async listForCustomer(user?: JwtPayload) {
+    if (!user?.sub) {
+      throw new UnauthorizedException('Authentication required');
+    }
     const orders = await this.prisma.customerOrder.findMany({
       where: { userId: user.sub },
       include: ORDER_INCLUDE,

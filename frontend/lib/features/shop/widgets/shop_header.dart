@@ -10,7 +10,7 @@ import '../../../state/cart_state.dart';
 import '../../../state/catalog_state.dart';
 import '../../../state/navigation_state.dart';
 
-/// Persistent storefront header: brand, search, categories, cart, track, vendor.
+/// Persistent storefront header: brand, search, categories, cart, track, account.
 class ShopHeader extends StatelessWidget {
   const ShopHeader({
     super.key,
@@ -121,12 +121,9 @@ class ShopHeader extends StatelessWidget {
                 _AccountMenuButton(auth: auth)
               else
                 IconButton(
-                  tooltip: 'Vendor dashboard',
-                  onPressed: () {
-                    context.read<NavigationState>().setMode(AppMode.vendor);
-                    context.go('/vendor');
-                  },
-                  icon: const Icon(Icons.storefront_outlined),
+                  tooltip: 'Sign in / Register',
+                  onPressed: () => context.go('/login'),
+                  icon: const Icon(Icons.person_outline),
                 ),
             ],
           ),
@@ -307,7 +304,7 @@ class _CategoryDropdown extends StatelessWidget {
   }
 }
 
-enum _AccountAction { vendorDashboard, logout }
+enum _AccountAction { myOrders, vendorDashboard, logout }
 
 class _AccountMenuButton extends StatelessWidget {
   const _AccountMenuButton({required this.auth});
@@ -322,6 +319,8 @@ class _AccountMenuButton extends StatelessWidget {
       offset: const Offset(0, 40),
       onSelected: (action) async {
         switch (action) {
+          case _AccountAction.myOrders:
+            context.go('/orders');
           case _AccountAction.vendorDashboard:
             context.read<NavigationState>().setMode(AppMode.vendor);
             context.go('/vendor');
@@ -358,6 +357,16 @@ class _AccountMenuButton extends StatelessWidget {
               ),
             ),
           if (user != null) const PopupMenuDivider(),
+          const PopupMenuItem(
+            value: _AccountAction.myOrders,
+            child: Row(
+              children: [
+                Icon(Icons.receipt_long_outlined, size: 20),
+                SizedBox(width: 12),
+                Text('My Orders'),
+              ],
+            ),
+          ),
           if (user?.isVendorStaff == true)
             const PopupMenuItem(
               value: _AccountAction.vendorDashboard,

@@ -160,6 +160,11 @@ extension OrderStatusLabel on OrderStatus {
       _ => OrderStatus.pending,
     };
   }
+
+  bool get isTrackable =>
+      this == OrderStatus.pending ||
+      this == OrderStatus.processing ||
+      this == OrderStatus.shipped;
 }
 
 class OrderLineItem {
@@ -284,6 +289,10 @@ class VendorUser {
     this.storeName,
     this.isVerified,
     this.isOnline,
+    this.phone,
+    this.district,
+    this.sector,
+    this.landmark,
   });
 
   final String id;
@@ -294,6 +303,10 @@ class VendorUser {
   final String? storeName;
   final bool? isVerified;
   final bool? isOnline;
+  final String? phone;
+  final String? district;
+  final String? sector;
+  final String? landmark;
 
   String get initials {
     final parts = name.trim().split(RegExp(r'\s+'));
@@ -322,6 +335,34 @@ class VendorUser {
     return normalized == 'VENDOR' || normalized == 'ADMIN';
   }
 
+  bool get hasSavedAddress =>
+      (phone != null && phone!.isNotEmpty) ||
+      (district != null && district!.isNotEmpty) ||
+      (sector != null && sector!.isNotEmpty) ||
+      (landmark != null && landmark!.isNotEmpty);
+
+  VendorUser copyWith({
+    String? phone,
+    String? district,
+    String? sector,
+    String? landmark,
+  }) {
+    return VendorUser(
+      id: id,
+      email: email,
+      name: name,
+      role: role,
+      vendorId: vendorId,
+      storeName: storeName,
+      isVerified: isVerified,
+      isOnline: isOnline,
+      phone: phone ?? this.phone,
+      district: district ?? this.district,
+      sector: sector ?? this.sector,
+      landmark: landmark ?? this.landmark,
+    );
+  }
+
   factory VendorUser.fromJson(Map<String, dynamic> json) {
     final vendor = json['vendor'];
     return VendorUser(
@@ -345,6 +386,10 @@ class VendorUser {
       isOnline:
           json['isOnline'] as bool? ??
           (vendor is Map<String, dynamic> ? vendor['isOnline'] as bool? : null),
+      phone: json['phone'] as String?,
+      district: json['district'] as String?,
+      sector: json['sector'] as String?,
+      landmark: json['landmark'] as String?,
     );
   }
 }

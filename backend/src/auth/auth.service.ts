@@ -8,14 +8,18 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { UserRole } from '@prisma/client';
+import { User, UserRole, Vendor } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { OAuth2Client, TokenPayload } from 'google-auth-library';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterVendorDto } from './dto/register-vendor.dto';
+import { CreateUserDto } from './dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
 import { ConvertGuestDto } from './dto/convert-guest.dto';
 import { JwtPayload } from './types/jwt-payload';
+import { normalizeRwandaPhone } from '../common/utils/rwanda-phone';
+
+type AuthUser = User & { vendor: Vendor | null };
 
 @Injectable()
 export class AuthService {
@@ -25,6 +29,29 @@ export class AuthService {
     private readonly config: ConfigService,
   ) {}
 
+  async registerCustomer(dto: CreateUserDto) {
+    const email = dto.email.toLowerCase().trim();
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      throw new ConflictException('Email is already registered');
+    }
+
+    const phone = this.requireRwandaPhone(dto.phone);
+    const password = await bcrypt.hash(dto.password, 12);
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        password,
+        name: dto.name.trim(),
+        role: UserRole.CUSTOMER,
+        phone,
+      },
+      include: { vendor: true },
+    });
+
+    return this.issueAuthResponse(user);
+  }
+
   async registerVendor(dto: RegisterVendorDto) {
     const email = dto.email.toLowerCase().trim();
     const existing = await this.prisma.user.findUnique({ where: { email } });
@@ -32,6 +59,7 @@ export class AuthService {
       throw new ConflictException('Email is already registered');
     }
 
+    const phone = this.requireRwandaPhone(dto.phone);
     const password = await bcrypt.hash(dto.password, 12);
     const user = await this.prisma.user.create({
       data: {
@@ -39,6 +67,7 @@ export class AuthService {
         password,
         name: dto.name.trim(),
         role: UserRole.VENDOR,
+        phone,
         vendor: {
           create: {
             storeName: dto.storeName.trim(),
@@ -50,12 +79,7 @@ export class AuthService {
       include: { vendor: true },
     });
 
-    return this.issueAuthResponse(user.id, user.email, user.role, user.vendor!.id, {
-      name: user.name,
-      storeName: user.vendor!.storeName,
-      isVerified: user.vendor!.isVerified,
-      isOnline: user.vendor!.isOnline,
-    });
+    return this.issueAuthResponse(user);
   }
 
   async login(dto: LoginDto) {
@@ -77,12 +101,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    return this.issueAuthResponse(user.id, user.email, user.role, user.vendor?.id ?? null, {
-      name: user.name,
-      storeName: user.vendor?.storeName ?? null,
-      isVerified: user.vendor?.isVerified ?? null,
-      isOnline: user.vendor?.isOnline ?? null,
-    });
+    return this.issueAuthResponse(user);
   }
 
   async loginWithGoogle(idToken: string, orderId?: string) {
@@ -132,20 +151,14 @@ export class AuthService {
 
     if (orderId) {
       await this.linkGuestOrder(user.id, email, orderId);
+      const refreshed = await this.prisma.user.findUnique({
+        where: { id: user.id },
+        include: { vendor: true },
+      });
+      if (refreshed) user = refreshed;
     }
 
-    return this.issueAuthResponse(
-      user.id,
-      user.email,
-      user.role,
-      user.vendor?.id ?? null,
-      {
-        name: user.name,
-        storeName: user.vendor?.storeName ?? null,
-        isVerified: user.vendor?.isVerified ?? null,
-        isOnline: user.vendor?.isOnline ?? null,
-      },
-    );
+    return this.issueAuthResponse(user);
   }
 
   async convertGuest(dto: ConvertGuestDto) {
@@ -177,18 +190,7 @@ export class AuthService {
       if (!ok) {
         throw new UnauthorizedException('Invalid credentials');
       }
-      return this.issueAuthResponse(
-        linked.id,
-        linked.email,
-        linked.role,
-        linked.vendor?.id ?? null,
-        {
-          name: linked.name,
-          storeName: linked.vendor?.storeName ?? null,
-          isVerified: linked.vendor?.isVerified ?? null,
-          isOnline: linked.vendor?.isOnline ?? null,
-        },
-      );
+      return this.issueAuthResponse(linked);
     }
 
     let user = await this.prisma.user.findUnique({
@@ -234,18 +236,7 @@ export class AuthService {
 
     await this.linkGuestOrder(user.id, email, order.id);
 
-    return this.issueAuthResponse(
-      user.id,
-      user.email,
-      user.role,
-      user.vendor?.id ?? null,
-      {
-        name: user.name,
-        storeName: user.vendor?.storeName ?? null,
-        isVerified: user.vendor?.isVerified ?? null,
-        isOnline: user.vendor?.isOnline ?? null,
-      },
-    );
+    return this.issueAuthResponse(user);
   }
 
   private async linkGuestOrder(userId: string, email: string, orderId: string) {
@@ -296,11 +287,33 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
 
+    return this.toPublicProfile(user);
+  }
+
+  private requireRwandaPhone(input: string): string {
+    const phone = normalizeRwandaPhone(input);
+    if (!phone) {
+      throw new BadRequestException(
+        'Enter a valid Rwandan phone number (+250 7XX XXX XXX or 07XX XXX XXX)',
+      );
+    }
+    return phone;
+  }
+
+  private toPublicProfile(user: AuthUser) {
     return {
       id: user.id,
       email: user.email,
       name: user.name,
       role: user.role,
+      phone: user.phone,
+      district: user.district,
+      sector: user.sector,
+      landmark: user.landmark,
+      vendorId: user.vendor?.id ?? null,
+      storeName: user.vendor?.storeName ?? null,
+      isVerified: user.vendor?.isVerified ?? null,
+      isOnline: user.vendor?.isOnline ?? null,
       vendor: user.vendor
         ? {
             id: user.vendor.id,
@@ -313,33 +326,18 @@ export class AuthService {
     };
   }
 
-  private async issueAuthResponse(
-    userId: string,
-    email: string,
-    role: UserRole,
-    vendorId: string | null,
-    profile: {
-      name: string;
-      storeName: string | null;
-      isVerified: boolean | null;
-      isOnline: boolean | null;
-    },
-  ) {
-    const payload: JwtPayload = { sub: userId, email, role, vendorId };
+  private async issueAuthResponse(user: AuthUser) {
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      vendorId: user.vendor?.id ?? null,
+    };
     const accessToken = await this.jwt.signAsync(payload);
     return {
       accessToken,
       tokenType: 'Bearer',
-      user: {
-        id: userId,
-        email,
-        name: profile.name,
-        role,
-        vendorId,
-        storeName: profile.storeName,
-        isVerified: profile.isVerified,
-        isOnline: profile.isOnline,
-      },
+      user: this.toPublicProfile(user),
     };
   }
 }

@@ -159,17 +159,34 @@ class IkayiApi {
     await client.post('/orders/$orderId/claim');
   }
 
+  Future<({VendorUser user, String accessToken})> register({
+    required String email,
+    required String password,
+    required String name,
+    required String phone,
+  }) async {
+    final data = await client.post('/auth/register', body: {
+      'email': email,
+      'password': password,
+      'name': name,
+      'phone': phone,
+    });
+    return _authResult(data);
+  }
+
   Future<({VendorUser user, String accessToken})> registerVendor({
     required String email,
     required String password,
     required String name,
     required String storeName,
+    required String phone,
   }) async {
     final data = await client.post('/auth/register-vendor', body: {
       'email': email,
       'password': password,
       'name': name,
       'storeName': storeName,
+      'phone': phone,
     });
     return _authResult(data);
   }
@@ -196,9 +213,10 @@ class IkayiApi {
     required String landmark,
     required String paymentMethod,
     required List<Map<String, dynamic>> items,
+    bool isGuest = true,
   }) async {
     final data = await client.post('/orders', body: {
-      'isGuest': true,
+      'isGuest': isGuest,
       'guestName': guestName,
       'email': email,
       'phone': phone,
@@ -234,6 +252,14 @@ class IkayiApi {
     final data =
         await client.get('/orders/track/$cleaned') as Map<String, dynamic>;
     return CustomerOrder.fromJson(data);
+  }
+
+  Future<List<CustomerOrder>> myOrders() async {
+    final data = await client.get('/orders/my-orders');
+    final list = data as List<dynamic>;
+    return list
+        .map((e) => CustomerOrder.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<List<CustomerOrder>> vendorOrders({OrderStatus? status}) async {

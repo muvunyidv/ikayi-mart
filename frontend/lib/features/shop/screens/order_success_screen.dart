@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/password_rules.dart';
+import '../../../core/widgets/widgets.dart';
 import '../../../state/auth_state.dart';
 import '../../vendor/widgets/google_sign_in_button.dart';
 
@@ -35,14 +37,18 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
   @override
   void initState() {
     super.initState();
+    _password.addListener(_onPasswordChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) => _claimIfLoggedIn());
   }
 
   @override
   void dispose() {
+    _password.removeListener(_onPasswordChanged);
     _password.dispose();
     super.dispose();
   }
+
+  void _onPasswordChanged() => setState(() {});
 
   Future<void> _claimIfLoggedIn() async {
     final auth = context.read<AuthState>();
@@ -54,9 +60,10 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
   }
 
   Future<void> _createAccount() async {
-    if (_password.text.length < 8) {
+    final error = PasswordRules.validator(_password.text);
+    if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password must be at least 8 characters')),
+        SnackBar(content: Text(error)),
       );
       return;
     }
@@ -210,6 +217,7 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
                           helperText: 'For ${widget.email}',
                         ),
                       ),
+                      PasswordStrengthMeter(password: _password.text),
                       const SizedBox(height: 12),
                       ElevatedButton(
                         onPressed: _creating ? null : _createAccount,

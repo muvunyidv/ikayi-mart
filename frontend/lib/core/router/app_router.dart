@@ -1,8 +1,10 @@
 import 'package:go_router/go_router.dart';
 
+import '../../features/auth/screens/auth_screen.dart';
 import '../../features/shop/screens/cart_screen.dart';
 import '../../features/shop/screens/checkout_screen.dart';
 import '../../features/shop/screens/landing_screen.dart';
+import '../../features/shop/screens/my_orders_screen.dart';
 import '../../features/shop/screens/order_success_screen.dart';
 import '../../features/shop/screens/order_tracking_screen.dart';
 import '../../features/shop/screens/product_detail_screen.dart';
@@ -53,6 +55,14 @@ GoRouter createAppRouter() {
             builder: (context, state) => OrderTrackingScreen(
               initialCode: state.uri.queryParameters['code'],
             ),
+          ),
+          GoRoute(
+            path: '/login',
+            builder: (context, state) => const AuthScreen(),
+          ),
+          GoRoute(
+            path: '/orders',
+            builder: (context, state) => const MyOrdersScreen(),
           ),
         ],
       ),

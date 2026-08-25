@@ -19,17 +19,17 @@ export class OrdersController {
   @Post()
   @ApiOperation({
     summary:
-      'Place an order. Unauthenticated when isGuest is true and contact details are provided.',
+      'Place an order. Unauthenticated when isGuest is true and contact details are provided. Signed-in users are linked and their shipping profile is saved.',
   })
-  create(@Body() dto: GuestCheckoutDto) {
-    return this.orders.guestCheckout(dto);
+  create(@Body() dto: GuestCheckoutDto, @CurrentUser() user?: JwtPayload) {
+    return this.orders.guestCheckout(dto, user);
   }
 
   @Public()
   @Post('guest-checkout')
   @ApiOperation({ summary: 'Guest checkout alias of POST /orders' })
-  guestCheckout(@Body() dto: GuestCheckoutDto) {
-    return this.orders.guestCheckout(dto);
+  guestCheckout(@Body() dto: GuestCheckoutDto, @CurrentUser() user?: JwtPayload) {
+    return this.orders.guestCheckout(dto, user);
   }
 
   @Public()
@@ -39,10 +39,18 @@ export class OrdersController {
     return this.orders.track(code);
   }
 
-  @Get('mine')
+  @Get('my-orders')
   @Roles(UserRole.CUSTOMER, UserRole.VENDOR, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Orders linked to the signed-in shopper account' })
+  listMyOrders(@CurrentUser() user: JwtPayload) {
+    return this.orders.listForCustomer(user);
+  }
+
+  @Get('mine')
+  @Roles(UserRole.CUSTOMER, UserRole.VENDOR, UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Alias of GET /orders/my-orders' })
   listMine(@CurrentUser() user: JwtPayload) {
     return this.orders.listForCustomer(user);
   }

@@ -34,7 +34,7 @@ class _CheckoutChoiceBodyState extends State<_CheckoutChoiceBody> {
 
   Future<void> _signInEmail() async {
     Navigator.of(context).pop();
-    context.go('/vendor');
+    context.go('/login?next=/checkout');
   }
 
   Future<void> _googleThenCheckout() async {

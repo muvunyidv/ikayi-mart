@@ -41,6 +41,7 @@
     "google-auth-library": "^11.0.2",
     "helmet": "^8.1.0",
     "ioredis": "^5.7.0",
+    "libphonenumber-js": "^1.12.15",
     "multer": "^2.2.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",

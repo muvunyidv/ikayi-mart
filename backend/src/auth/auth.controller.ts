@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
+import { CreateUserDto } from './dto/create-user.dto';
 import { RegisterVendorDto } from './dto/register-vendor.dto';
 import { LoginDto } from './dto/login.dto';
 import { GoogleAuthDto } from './dto/google-auth.dto';
@@ -13,6 +14,13 @@ import { JwtPayload } from './types/jwt-payload';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
+
+  @Public()
+  @Post('register')
+  @ApiOperation({ summary: 'Register a shopper account' })
+  register(@Body() dto: CreateUserDto) {
+    return this.auth.registerCustomer(dto);
+  }
 
   @Public()
   @Post('register-vendor')
@@ -46,7 +54,7 @@ export class AuthController {
 
   @Get('me')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Current vendor / admin profile' })
+  @ApiOperation({ summary: 'Current shopper / vendor / admin profile' })
   me(@CurrentUser() user: JwtPayload) {
     return this.auth.me(user.sub);
   }
