@@ -37,9 +37,14 @@ finally {
 }
 
 $buildDir = Join-Path $repoRoot "frontend\build\web"
-if (-not (Test-Path (Join-Path $buildDir "index.html"))) {
+$indexHtml = Join-Path $buildDir "index.html"
+if (-not (Test-Path $indexHtml)) {
     throw "Build failed: frontend/build/web/index.html was not created."
 }
+
+# GitHub Pages has no SPA rewrite. Serving the built app as 404.html keeps
+# deep links (/vendor, /login, etc.) working after refresh or crash recovery.
+Copy-Item -Path $indexHtml -Destination (Join-Path $buildDir "404.html") -Force
 
 Set-Content -Path (Join-Path $buildDir "CNAME") -Value "mart.ikayi.app"
 New-Item -Path (Join-Path $buildDir ".nojekyll") -ItemType File -Force | Out-Null

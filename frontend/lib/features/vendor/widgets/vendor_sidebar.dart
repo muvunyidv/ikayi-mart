@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/widgets.dart';
 import '../../../state/auth_state.dart';
 import '../../../state/navigation_state.dart';
 
@@ -31,153 +30,140 @@ class VendorSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ImigongoBackground(
-      variant: ImigongoVariant.light,
-      backgroundColor: AppColors.surfaceLowest,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeInOut,
-        width: compact ? kSidebarCollapsedWidth : kSidebarExpandedWidth,
-        clipBehavior: Clip.hardEdge,
-        decoration: const BoxDecoration(color: AppColors.surfaceLowest),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                compact ? 8 : 16,
-                16,
-                compact ? 8 : 8,
-                8,
-              ),
-              child: compact
-                  ? Column(
-                      children: [
-                        const Tooltip(
-                          message: 'IKAYIMART',
-                          child: Icon(
-                            Icons.storefront,
-                            color: AppColors.primaryOrange,
-                          ),
-                        ),
-                        if (onToggleCollapse != null)
-                          IconButton(
-                            tooltip: 'Expand sidebar',
-                            onPressed: onToggleCollapse,
-                            icon: const Icon(Icons.chevron_right),
-                          ),
-                      ],
-                    )
-                  : Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'IKAYIMART',
-                                style: Theme.of(context).textTheme.titleSmall
-                                    ?.copyWith(
-                                      color: AppColors.primaryOrange,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 0.5,
-                                    ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'VENDOR CENTRAL',
-                                style: Theme.of(context).textTheme.labelLarge
-                                    ?.copyWith(
-                                      color: AppColors.secondary,
-                                      fontSize: 10,
-                                    ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (onToggleCollapse != null)
-                          IconButton(
-                            tooltip: 'Collapse sidebar',
-                            onPressed: onToggleCollapse,
-                            icon: const Icon(Icons.chevron_left),
-                          ),
-                      ],
-                    ),
+    // Solid sidebar (no Imigongo mesh). Stacking full-viewport CustomPaint
+    // meshes with the main vendor pane OOMs Chrome on Flutter web.
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeInOut,
+      width: compact ? kSidebarCollapsedWidth : kSidebarExpandedWidth,
+      clipBehavior: Clip.hardEdge,
+      decoration: const BoxDecoration(
+        color: AppColors.surfaceLowest,
+        border: Border(right: BorderSide(color: AppColors.borderSubtle)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              compact ? 8 : 16,
+              16,
+              compact ? 8 : 8,
+              8,
             ),
-            const SizedBox(height: 8),
-            ..._items.map((item) {
-              final (section, label, icon) = item;
-              final active = selected == section;
-              final tile = Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: compact ? 8 : 12,
-                  vertical: 2,
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => onSelect(section),
-                      child: Stack(
-                        children: [
-                          if (active)
-                            const Positioned.fill(
-                              child: ImigongoBackground(
-                                variant: ImigongoVariant.navActive,
-                                patternOpacity: 0.2,
-                                backgroundColor: AppColors.primaryLight,
-                                child: SizedBox.expand(),
-                              ),
-                            ),
-                          Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: compact ? 0 : 14,
-                              vertical: 12,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: compact
-                                  ? MainAxisAlignment.center
-                                  : MainAxisAlignment.start,
-                              children: [
-                                Icon(
-                                  icon,
-                                  size: 22,
-                                  color: active
-                                      ? AppColors.primaryOrange
-                                      : AppColors.secondary,
-                                ),
-                                if (!compact) ...[
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      label,
-                                      style: TextStyle(
-                                        fontWeight: active
-                                            ? FontWeight.w600
-                                            : FontWeight.w500,
-                                        color: active
-                                            ? AppColors.onSurface
-                                            : AppColors.secondary,
-                                      ),
-                                    ),
+            child: compact
+                ? Column(
+                    children: [
+                      const Tooltip(
+                        message: 'IKAYIMART',
+                        child: Icon(
+                          Icons.storefront,
+                          color: AppColors.primaryOrange,
+                        ),
+                      ),
+                      if (onToggleCollapse != null)
+                        IconButton(
+                          tooltip: 'Expand sidebar',
+                          onPressed: onToggleCollapse,
+                          icon: const Icon(Icons.chevron_right),
+                        ),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'IKAYIMART',
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(
+                                    color: AppColors.primaryOrange,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.5,
                                   ),
-                                ],
-                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'VENDOR CENTRAL',
+                              style: Theme.of(context).textTheme.labelLarge
+                                  ?.copyWith(
+                                    color: AppColors.secondary,
+                                    fontSize: 10,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (onToggleCollapse != null)
+                        IconButton(
+                          tooltip: 'Collapse sidebar',
+                          onPressed: onToggleCollapse,
+                          icon: const Icon(Icons.chevron_left),
+                        ),
+                    ],
+                  ),
+          ),
+          const SizedBox(height: 8),
+          ..._items.map((item) {
+            final (section, label, icon) = item;
+            final active = selected == section;
+            final tile = Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: compact ? 8 : 12,
+                vertical: 2,
+              ),
+              child: Material(
+                color: active ? AppColors.primaryLight : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+                child: InkWell(
+                  onTap: () => onSelect(section),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: compact ? 0 : 14,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: compact
+                          ? MainAxisAlignment.center
+                          : MainAxisAlignment.start,
+                      children: [
+                        Icon(
+                          icon,
+                          size: 22,
+                          color: active
+                              ? AppColors.primaryOrange
+                              : AppColors.secondary,
+                        ),
+                        if (!compact) ...[
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              label,
+                              style: TextStyle(
+                                fontWeight: active
+                                    ? FontWeight.w600
+                                    : FontWeight.w500,
+                                color: active
+                                    ? AppColors.onSurface
+                                    : AppColors.secondary,
+                              ),
                             ),
                           ),
                         ],
-                      ),
+                      ],
                     ),
                   ),
                 ),
-              );
-              return compact ? Tooltip(message: label, child: tile) : tile;
-            }),
-            const Spacer(),
-            _VendorProfileFooter(compact: compact),
-          ],
-        ),
+              ),
+            );
+            return compact ? Tooltip(message: label, child: tile) : tile;
+          }),
+          const Spacer(),
+          _VendorProfileFooter(compact: compact),
+        ],
       ),
     );
   }

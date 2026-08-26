@@ -94,7 +94,9 @@ class VendorShell extends StatelessWidget {
               onToggleCollapse: nav.toggleVendorSidebar,
             ),
           Expanded(
+            // Single lite mesh for the content pane only (sidebar is solid).
             child: ImigongoBackground(
+              lite: true,
               child: Column(
                 children: [
                   if (isDesktop)

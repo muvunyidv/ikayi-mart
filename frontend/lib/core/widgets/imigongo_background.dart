@@ -23,6 +23,9 @@ enum ImigongoVariant {
 /// diamond mesh. Nested parallel zigzags add the inner-diamond imprint.
 /// Painted with [CustomPainter] only — no assets (Flutter equivalent of an
 /// inline SVG `data:image/svg+xml` CSS background).
+///
+/// Prefer a single [ImigongoBackground] per viewport. On Flutter web, stacked
+/// full-screen meshes can exhaust the tab renderer (Chrome "Aw, Snap").
 class ImigongoBackground extends StatelessWidget {
   const ImigongoBackground({
     super.key,
@@ -30,11 +33,15 @@ class ImigongoBackground extends StatelessWidget {
     this.variant = ImigongoVariant.light,
     this.backgroundColor,
     this.patternOpacity,
+    this.lite = false,
   });
 
   final Widget child;
   final ImigongoVariant variant;
   final Color? backgroundColor;
+
+  /// When true, uses a coarser single lattice (safer on Flutter web / large panes).
+  final bool lite;
   final double? patternOpacity;
 
   Color get _resolvedBackground {
@@ -51,7 +58,7 @@ class ImigongoBackground extends StatelessWidget {
     return switch (variant) {
       ImigongoVariant.dark => 0.10,
       // Soft watermark: light grey stroke already near the ground color.
-      ImigongoVariant.light => 0.85,
+      ImigongoVariant.light => lite ? 0.45 : 0.85,
       ImigongoVariant.navActive => 0.18,
     };
   }
@@ -73,14 +80,17 @@ class ImigongoBackground extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           IgnorePointer(
-            child: CustomPaint(
-              painter: _ImigongoPainter(
-                variant: variant,
-                strokeColor: _strokeColor,
-                primaryColor: AppColors.primaryOrange,
-                patternOpacity: _resolvedOpacity,
+            child: RepaintBoundary(
+              child: CustomPaint(
+                painter: _ImigongoPainter(
+                  variant: variant,
+                  strokeColor: _strokeColor,
+                  primaryColor: AppColors.primaryOrange,
+                  patternOpacity: _resolvedOpacity,
+                  lite: lite,
+                ),
+                child: const SizedBox.expand(),
               ),
-              child: const SizedBox.expand(),
             ),
           ),
           child,
@@ -96,18 +106,20 @@ class _ImigongoPainter extends CustomPainter {
     required this.strokeColor,
     required this.primaryColor,
     required this.patternOpacity,
+    required this.lite,
   });
 
   final ImigongoVariant variant;
   final Color strokeColor;
   final Color primaryColor;
   final double patternOpacity;
+  final bool lite;
 
   /// Peak-to-peak horizontal wavelength (BMS ~36–40px tile).
-  static const double _periodX = 40;
+  double get _periodX => lite ? 64 : 40;
 
   /// Full diamond height (two row-steps; peak-to-peak vertically).
-  static const double _periodY = 40;
+  double get _periodY => lite ? 64 : 40;
 
   /// Inset for the nested (inner) diamond outline.
   static const double _nest = 5;
@@ -125,28 +137,13 @@ class _ImigongoPainter extends CustomPainter {
   }
 
   /// Continuous horizontal zigzags that tile into a diamond mesh.
-  ///
-  /// Rows are spaced by half the tile height so each row's valleys sit on the
-  /// next row's peaks — seamless both axes (CSS SVG equivalent):
-  ///
-  /// ```
-  /// M0 20 L20 0  L40 20 L60 0  L80 20   // row y = 0
-  /// M0 40 L20 20 L40 40 L60 20 L80 40   // row y = 20
-  /// ```
   void _paintChevronMesh(Canvas canvas, Size size) {
     final paint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2
+      ..strokeWidth = lite ? 1 : 1.2
       ..strokeJoin = StrokeJoin.miter
       ..strokeCap = StrokeCap.butt
       ..color = strokeColor.withValues(alpha: patternOpacity);
-
-    final nestedPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1
-      ..strokeJoin = StrokeJoin.miter
-      ..strokeCap = StrokeCap.butt
-      ..color = strokeColor.withValues(alpha: patternOpacity * 0.85);
 
     final halfX = _periodX / 2;
     final halfY = _periodY / 2;
@@ -160,8 +157,16 @@ class _ImigongoPainter extends CustomPainter {
       paint: paint,
     );
 
-    // Second, slightly inset zigzag lattice → nested diamond imprint
-    // (Imigongo double-outline), still seamless.
+    // Nested lattice is expensive on CanvasKit; skip in lite/web mode.
+    if (lite) return;
+
+    final nestedPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..strokeJoin = StrokeJoin.miter
+      ..strokeCap = StrokeCap.butt
+      ..color = strokeColor.withValues(alpha: patternOpacity * 0.85);
+
     final inset = _nest.toDouble();
     _drawZigzagRows(
       canvas,
@@ -191,7 +196,6 @@ class _ImigongoPainter extends CustomPainter {
       canvas.drawPath(
         _horizontalZigzag(
           width: size.width,
-          // Valley baseline; peaks sit [halfY] above.
           valleyY: y + halfY,
           halfX: halfX,
           amplitude: halfY,
@@ -202,9 +206,6 @@ class _ImigongoPainter extends CustomPainter {
     }
   }
 
-  /// One continuous horizontal chevron: valley → peak → valley → peak → …
-  ///
-  /// Equivalent to `M0 V L halfX (V-A) L periodX V L …`
   Path _horizontalZigzag({
     required double width,
     required double valleyY,
@@ -253,6 +254,8 @@ class _ImigongoPainter extends CustomPainter {
 
     canvas.drawPath(_navZigPath(size.width, midY, amplitude, zig), mainPaint);
 
+    if (lite) return;
+
     final echoPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1
@@ -288,6 +291,7 @@ class _ImigongoPainter extends CustomPainter {
     return oldDelegate.variant != variant ||
         oldDelegate.strokeColor != strokeColor ||
         oldDelegate.primaryColor != primaryColor ||
-        oldDelegate.patternOpacity != patternOpacity;
+        oldDelegate.patternOpacity != patternOpacity ||
+        oldDelegate.lite != lite;
   }
 }
