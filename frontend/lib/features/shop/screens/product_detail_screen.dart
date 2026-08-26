@@ -7,6 +7,7 @@ import '../../../core/models/models.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_format.dart';
+import '../../../core/widgets/store_link.dart';
 import '../../../state/cart_state.dart';
 import '../../../state/catalog_state.dart';
 import '../widgets/product_card.dart';
@@ -286,10 +287,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               const Icon(Icons.storefront, color: AppColors.primaryOrange),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  'Sold by: ${product.vendorName}',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
+                child: product.vendorName.trim().isEmpty
+                    ? Text(
+                        'Sold by an IKAYIMART vendor',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      )
+                    : StoreLink(
+                        name: product.vendorName,
+                        slug: product.vendorSlug,
+                        prefix: 'Sold by: ',
+                        iconSize: 0,
+                        showIcon: false,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: AppColors.primaryOrange,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
               ),
             ],
           ),
@@ -407,9 +420,25 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               ],
               if (moreFromVendor.isNotEmpty) ...[
                 const SizedBox(height: 40),
-                Text(
-                  'MORE FROM THIS VENDOR',
-                  style: Theme.of(context).textTheme.labelLarge,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'MORE FROM THIS VENDOR',
+                        style: Theme.of(context).textTheme.labelLarge,
+                      ),
+                    ),
+                    if (product.vendorName.trim().isNotEmpty)
+                      StoreLink(
+                        name: product.vendorName,
+                        slug: product.vendorSlug,
+                        showIcon: false,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: AppColors.primaryOrange,
+                          fontSize: 12,
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 16),
                 SizedBox(

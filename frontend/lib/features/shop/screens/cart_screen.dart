@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_format.dart';
 import '../../../core/widgets/product_thumbnail.dart';
+import '../../../core/widgets/store_link.dart';
 import '../../../state/cart_state.dart';
 import '../widgets/checkout_choice_sheet.dart';
 
@@ -184,6 +185,19 @@ class _CartItemsColumn extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleSmall,
                         ),
+                        if (item.product.vendorName.trim().isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          StoreLink(
+                            name: item.product.vendorName,
+                            slug: item.product.vendorSlug,
+                            style: Theme.of(context).textTheme.labelLarge
+                                ?.copyWith(
+                                  color: AppColors.secondary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                        ],
                         if (variantLabel.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Text(

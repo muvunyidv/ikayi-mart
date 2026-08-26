@@ -4,6 +4,7 @@ import '../../../core/models/models.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_format.dart';
 import '../../../core/widgets/product_thumbnail.dart';
+import '../../../core/widgets/store_link.dart';
 
 class ProductCard extends StatelessWidget {
   const ProductCard({
@@ -12,12 +13,14 @@ class ProductCard extends StatelessWidget {
     required this.onTap,
     this.onFavorite,
     this.isFavorite = false,
+    this.showVendor = true,
   });
 
   final Product product;
   final VoidCallback onTap;
   final VoidCallback? onFavorite;
   final bool isFavorite;
+  final bool showVendor;
 
   @override
   Widget build(BuildContext context) {
@@ -130,6 +133,18 @@ class ProductCard extends StatelessWidget {
                         style: Theme.of(context).textTheme.labelLarge?.copyWith(
                           color: AppColors.secondary,
                           fontSize: 10,
+                        ),
+                      ),
+                    ],
+                    if (showVendor && product.vendorName.trim().isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      StoreLink(
+                        name: product.vendorName,
+                        slug: product.vendorSlug,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: AppColors.secondary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],

@@ -12,6 +12,7 @@ import { User, UserRole, Vendor } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { OAuth2Client, TokenPayload } from 'google-auth-library';
 import { PrismaService } from '../prisma/prisma.service';
+import { StoresService } from '../stores/stores.service';
 import { RegisterVendorDto } from './dto/register-vendor.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
@@ -27,6 +28,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly stores: StoresService,
   ) {}
 
   async registerCustomer(dto: CreateUserDto) {
@@ -61,6 +63,12 @@ export class AuthService {
 
     const phone = this.requireRwandaPhone(dto.phone);
     const password = await bcrypt.hash(dto.password, 12);
+    const storeName = dto.storeName.trim();
+    const slug = await this.stores.allocateSlug(storeName);
+    const contact = this.stores.resolveContact(dto, {
+      phone,
+      email,
+    });
     const user = await this.prisma.user.create({
       data: {
         email,
@@ -70,7 +78,11 @@ export class AuthService {
         phone,
         vendor: {
           create: {
-            storeName: dto.storeName.trim(),
+            storeName,
+            slug,
+            description: contact.description,
+            phone: contact.phone,
+            contactEmail: contact.contactEmail,
             isVerified: false,
             isOnline: true,
           },
@@ -312,12 +324,20 @@ export class AuthService {
       landmark: user.landmark,
       vendorId: user.vendor?.id ?? null,
       storeName: user.vendor?.storeName ?? null,
+      storeSlug: user.vendor?.slug ?? null,
+      storeDescription: user.vendor?.description ?? null,
+      storePhone: user.vendor?.phone ?? null,
+      storeContactEmail: user.vendor?.contactEmail ?? null,
       isVerified: user.vendor?.isVerified ?? null,
       isOnline: user.vendor?.isOnline ?? null,
       vendor: user.vendor
         ? {
             id: user.vendor.id,
             storeName: user.vendor.storeName,
+            slug: user.vendor.slug,
+            description: user.vendor.description,
+            phone: user.vendor.phone,
+            contactEmail: user.vendor.contactEmail,
             isVerified: user.vendor.isVerified,
             isOnline: user.vendor.isOnline,
           }

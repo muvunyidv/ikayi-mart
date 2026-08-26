@@ -6,6 +6,7 @@ import '../../../core/models/models.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_format.dart';
 import '../../../core/widgets/product_thumbnail.dart';
+import '../../../core/widgets/store_link.dart';
 import '../../../state/catalog_state.dart';
 
 /// One ordered SKU: thumbnail, title, quantity, description, line total.
@@ -29,6 +30,9 @@ class OrderItemTile extends StatelessWidget {
     final description = item.shortDescription.isNotEmpty
         ? item.shortDescription
         : (product?.description ?? '').trim();
+
+    final vendorName = (item.vendorName ?? product?.vendorName ?? '').trim();
+    final vendorSlug = item.vendorSlug ?? product?.vendorSlug;
 
     final body = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -73,6 +77,18 @@ class OrderItemTile extends StatelessWidget {
                     color: AppColors.secondary,
                     fontSize: 12,
                     height: 1.35,
+                  ),
+                ),
+              ],
+              if (vendorName.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                StoreLink(
+                  name: vendorName,
+                  slug: vendorSlug,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: AppColors.primaryOrange,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],

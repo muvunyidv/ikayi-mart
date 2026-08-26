@@ -27,11 +27,11 @@ int productCrossAxisCount(double width, {int max = 4}) {
   return count.clamp(1, max);
 }
 
-/// Card aspect ratio tuned so image + title + price fit without clipping.
+/// Card aspect ratio tuned so image + title + vendor + price fit without clipping.
 double productCardAspectRatio(double width) {
-  if (width >= kDesktopBreakpoint) return 0.72;
-  if (width >= kTabletBreakpoint) return 0.70;
-  return 0.68;
+  if (width >= kDesktopBreakpoint) return 0.66;
+  if (width >= kTabletBreakpoint) return 0.64;
+  return 0.60;
 }
 
 abstract final class AppTheme {

@@ -11,6 +11,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_format.dart';
 import '../../../core/widgets/shop_scroll_view.dart';
+import '../../../core/widgets/store_link.dart';
 import '../../orders/widgets/order_item_tile.dart';
 
 class OrderTrackingScreen extends StatefulWidget {
@@ -257,6 +258,10 @@ class _OrderStatusCard extends StatelessWidget {
         .map((i) => i.vendorName?.trim() ?? '')
         .where((n) => n.isNotEmpty)
         .firstOrNull;
+    final vendorSlug = order.items
+        .map((i) => i.vendorSlug?.trim() ?? '')
+        .where((s) => s.isNotEmpty)
+        .firstOrNull;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -334,6 +339,7 @@ class _OrderStatusCard extends StatelessWidget {
             _DriverCard(
               destination: '${order.landmark} — ${order.locationLabel}',
               partnerName: vendor,
+              partnerSlug: vendorSlug,
             ),
           ] else if (order.status == OrderStatus.delivered) ...[
             const SizedBox(height: 20),
@@ -420,10 +426,15 @@ class _TimelineRow extends StatelessWidget {
 }
 
 class _DriverCard extends StatelessWidget {
-  const _DriverCard({required this.destination, this.partnerName});
+  const _DriverCard({
+    required this.destination,
+    this.partnerName,
+    this.partnerSlug,
+  });
 
   final String destination;
   final String? partnerName;
+  final String? partnerSlug;
 
   @override
   Widget build(BuildContext context) {
@@ -457,13 +468,17 @@ class _DriverCard extends StatelessWidget {
                     fontSize: 12,
                   ),
                 ),
-                if (partnerName != null) ...[
+                if (partnerName != null && partnerName!.isNotEmpty) ...[
                   const SizedBox(height: 2),
-                  Text(
-                    'Vendor partner: $partnerName',
+                  StoreLink(
+                    name: partnerName!,
+                    slug: partnerSlug,
+                    prefix: 'Vendor partner: ',
+                    showIcon: false,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.secondary,
+                      color: AppColors.primaryOrange,
                       fontSize: 12,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],

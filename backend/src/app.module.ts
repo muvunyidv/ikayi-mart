@@ -10,6 +10,7 @@ import { OrdersModule } from './orders/orders.module';
 import { PaymentsModule } from './payments/payments.module';
 import { SupportModule } from './support/support.module';
 import { VendorDashboardModule } from './vendor/vendor.module';
+import { StoresModule } from './stores/stores.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { HealthController } from './health.controller';
@@ -43,6 +44,7 @@ function redisConnection(url: string) {
     PaymentsModule,
     SupportModule,
     VendorDashboardModule,
+    StoresModule,
   ],
   controllers: [HealthController],
   providers: [

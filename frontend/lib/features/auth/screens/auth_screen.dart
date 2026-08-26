@@ -24,6 +24,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _storeName = TextEditingController();
+  final _storeDescription = TextEditingController();
   final _email = TextEditingController();
   final _phone = TextEditingController();
   final _password = TextEditingController();
@@ -46,6 +47,7 @@ class _AuthScreenState extends State<AuthScreen> {
     _password.removeListener(_onPasswordChanged);
     _name.dispose();
     _storeName.dispose();
+    _storeDescription.dispose();
     _email.dispose();
     _phone.dispose();
     _password.dispose();
@@ -100,6 +102,9 @@ class _AuthScreenState extends State<AuthScreen> {
                   storeName: _storeName.text.trim(),
                   phone:
                       normalizeRwandaPhone(_phone.text) ?? _phone.text.trim(),
+                  description: _storeDescription.text.trim().isEmpty
+                      ? null
+                      : _storeDescription.text.trim(),
                 )
               : await auth.register(
                   email: _email.text.trim(),
@@ -230,6 +235,20 @@ class _AuthScreenState extends State<AuthScreen> {
                                     : null,
                               ),
                               const SizedBox(height: 12),
+                              TextFormField(
+                                controller: _storeDescription,
+                                textCapitalization:
+                                    TextCapitalization.sentences,
+                                textInputAction: TextInputAction.next,
+                                maxLines: 3,
+                                maxLength: 400,
+                                decoration: const InputDecoration(
+                                  labelText: 'Store bio (optional)',
+                                  hintText:
+                                      'Tell shoppers what your store is known for.',
+                                ),
+                              ),
+                              const SizedBox(height: 12),
                             ],
                             TextFormField(
                               controller: _phone,
@@ -331,6 +350,20 @@ class _AuthScreenState extends State<AuthScreen> {
                                       (v == null || v.trim().length < 2)
                                       ? 'Enter a store name'
                                       : null,
+                                ),
+                                const SizedBox(height: 12),
+                                TextFormField(
+                                  controller: _storeDescription,
+                                  textCapitalization:
+                                      TextCapitalization.sentences,
+                                  textInputAction: TextInputAction.next,
+                                  maxLines: 3,
+                                  maxLength: 400,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Store bio (optional)',
+                                    hintText:
+                                        'Tell shoppers what your store is known for.',
+                                  ),
                                 ),
                               ],
                             ],

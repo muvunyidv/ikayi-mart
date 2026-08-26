@@ -14,3 +14,17 @@ export function slugify(value: string): string {
     .replace(/(^-|-$)/g, '');
   return slug.length > 0 ? slug : `item-${Date.now()}`;
 }
+
+export async function uniqueSlug(
+  base: string,
+  isTaken: (slug: string) => Promise<boolean>,
+): Promise<string> {
+  const root = slugify(base);
+  let slug = root;
+  let i = 2;
+  while (await isTaken(slug)) {
+    slug = `${root}-${i}`;
+    i += 1;
+  }
+  return slug;
+}

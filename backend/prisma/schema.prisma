@@ -51,15 +51,19 @@ model User {
 }
 
 model Vendor {
-  id         String          @id @default(uuid())
-  userId     String          @unique
-  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  storeName  String
-  isVerified Boolean         @default(false)
-  isOnline   Boolean         @default(true)
-  products   Product[]
-  orders     OrderLineItem[]
-  createdAt  DateTime        @default(now())
+  id           String          @id @default(uuid())
+  userId       String          @unique
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storeName    String
+  slug         String          @unique
+  description  String?
+  phone        String?
+  contactEmail String?
+  isVerified   Boolean         @default(false)
+  isOnline     Boolean         @default(true)
+  products     Product[]
+  orders       OrderLineItem[]
+  createdAt    DateTime        @default(now())
 
   @@index([storeName])
 }

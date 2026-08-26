@@ -104,6 +104,8 @@ class AuthState extends ChangeNotifier {
     required String name,
     required String storeName,
     required String phone,
+    String? description,
+    String? contactEmail,
   }) async {
     return _authenticate(
       () => _api.registerVendor(
@@ -112,6 +114,8 @@ class AuthState extends ChangeNotifier {
         name: name,
         storeName: storeName,
         phone: phone,
+        description: description,
+        contactEmail: contactEmail,
       ),
     );
   }

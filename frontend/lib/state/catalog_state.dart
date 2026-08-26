@@ -41,11 +41,21 @@ class CatalogState extends ChangeNotifier {
     return products
         .where(
           (p) =>
-              p.vendorName == product.vendorName &&
-              p.id != product.id &&
-              p.inStock,
+              _sameVendor(p, product) && p.id != product.id && p.inStock,
         )
         .toList();
+  }
+
+  bool _sameVendor(Product a, Product b) {
+    if (a.vendorId != null &&
+        a.vendorId!.isNotEmpty &&
+        a.vendorId == b.vendorId) {
+      return true;
+    }
+    if (a.vendorSlug.isNotEmpty && a.vendorSlug == b.vendorSlug) {
+      return true;
+    }
+    return a.vendorName == b.vendorName;
   }
 
   /// Recommended pool: same category first, then the rest of the catalog.

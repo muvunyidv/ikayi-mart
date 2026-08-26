@@ -1,3 +1,5 @@
+import '../utils/store_slug.dart';
+
 class ProductVariant {
   const ProductVariant({required this.name, required this.options});
 
@@ -24,6 +26,8 @@ class Product {
     required this.vendorName,
     required this.description,
     required this.stock,
+    this.vendorId,
+    this.vendorSlug = '',
     this.badge,
     this.originLabel,
     this.gallery = const [],
@@ -41,6 +45,8 @@ class Product {
   final int priceRwf;
   final String imageUrl;
   final String vendorName;
+  final String? vendorId;
+  final String vendorSlug;
   final String description;
   final int stock;
   final String? badge;
@@ -75,6 +81,12 @@ class Product {
       priceRwf: (json['priceRwf'] as num).toInt(),
       imageUrl: json['imageUrl'] as String,
       vendorName: json['vendorName'] as String? ?? '',
+      vendorId: json['vendorId'] as String?,
+      vendorSlug: () {
+        final slug = json['vendorSlug'] as String? ?? '';
+        if (slug.isNotEmpty) return slug;
+        return slugifyStoreName(json['vendorName'] as String? ?? '');
+      }(),
       description: json['description'] as String? ?? '',
       stock: (json['stock'] as num?)?.toInt() ?? 0,
       badge: json['badge'] as String?,
@@ -176,6 +188,7 @@ class OrderLineItem {
     this.imageUrl = '',
     this.description = '',
     this.vendorName,
+    this.vendorSlug,
   });
 
   final String? productId;
@@ -185,6 +198,7 @@ class OrderLineItem {
   final int quantity;
   final int unitPriceRwf;
   final String? vendorName;
+  final String? vendorSlug;
 
   int get totalRwf => unitPriceRwf * quantity;
 
@@ -210,6 +224,10 @@ class OrderLineItem {
       quantity: (json['quantity'] as num?)?.toInt() ?? 1,
       unitPriceRwf: (json['unitPriceRwf'] as num?)?.toInt() ?? 0,
       vendorName: json['vendorName'] as String?,
+      vendorSlug: json['vendorSlug'] as String? ??
+          ((json['vendorName'] as String?)?.trim().isNotEmpty == true
+              ? slugifyStoreName(json['vendorName'] as String)
+              : null),
     );
   }
 }
@@ -309,6 +327,10 @@ class VendorUser {
     required this.role,
     this.vendorId,
     this.storeName,
+    this.storeSlug,
+    this.storeDescription,
+    this.storePhone,
+    this.storeContactEmail,
     this.isVerified,
     this.isOnline,
     this.phone,
@@ -323,6 +345,10 @@ class VendorUser {
   final String role;
   final String? vendorId;
   final String? storeName;
+  final String? storeSlug;
+  final String? storeDescription;
+  final String? storePhone;
+  final String? storeContactEmail;
   final bool? isVerified;
   final bool? isOnline;
   final String? phone;
@@ -376,6 +402,10 @@ class VendorUser {
       role: role,
       vendorId: vendorId,
       storeName: storeName,
+      storeSlug: storeSlug,
+      storeDescription: storeDescription,
+      storePhone: storePhone,
+      storeContactEmail: storeContactEmail,
       isVerified: isVerified,
       isOnline: isOnline,
       phone: phone ?? this.phone,
@@ -399,6 +429,22 @@ class VendorUser {
           json['storeName'] as String? ??
           (vendor is Map<String, dynamic>
               ? vendor['storeName'] as String?
+              : null),
+      storeSlug:
+          json['storeSlug'] as String? ??
+          (vendor is Map<String, dynamic> ? vendor['slug'] as String? : null),
+      storeDescription:
+          json['storeDescription'] as String? ??
+          (vendor is Map<String, dynamic>
+              ? vendor['description'] as String?
+              : null),
+      storePhone:
+          json['storePhone'] as String? ??
+          (vendor is Map<String, dynamic> ? vendor['phone'] as String? : null),
+      storeContactEmail:
+          json['storeContactEmail'] as String? ??
+          (vendor is Map<String, dynamic>
+              ? vendor['contactEmail'] as String?
               : null),
       isVerified:
           json['isVerified'] as bool? ??
@@ -481,3 +527,74 @@ const kCatalogCategories = <String>[
   'Beauty',
   'Fresh Produce',
 ];
+
+class StoreChannel {
+  const StoreChannel({
+    required this.id,
+    required this.storeName,
+    required this.slug,
+    required this.products,
+    this.description,
+    this.phone,
+    this.contactEmail,
+    this.isVerified = false,
+    this.isOnline = true,
+    this.categories = const [],
+    this.productCount = 0,
+  });
+
+  final String id;
+  final String storeName;
+  final String slug;
+  final String? description;
+  final String? phone;
+  final String? contactEmail;
+  final bool isVerified;
+  final bool isOnline;
+  final List<String> categories;
+  final List<Product> products;
+  final int productCount;
+
+  List<String> get filterTabs {
+    final unique = [
+      ...{for (final c in categories) c.trim()}.where((c) => c.isNotEmpty),
+    ]..sort();
+    return ['All', ...unique];
+  }
+
+  List<String> get bannerImageUrls {
+    final urls = <String>[];
+    final seen = <String>{};
+    for (final product in products) {
+      for (final url in product.allImages) {
+        if (url.isEmpty || seen.contains(url)) continue;
+        seen.add(url);
+        urls.add(url);
+        if (urls.length >= 12) return urls;
+      }
+    }
+    return urls;
+  }
+
+  factory StoreChannel.fromJson(Map<String, dynamic> json) {
+    final products = (json['products'] as List<dynamic>? ?? const [])
+        .map((e) => Product.fromJson(e as Map<String, dynamic>))
+        .toList();
+    return StoreChannel(
+      id: json['id'] as String? ?? '',
+      storeName: json['storeName'] as String? ?? '',
+      slug: json['slug'] as String? ?? '',
+      description: json['description'] as String?,
+      phone: json['phone'] as String?,
+      contactEmail: json['contactEmail'] as String?,
+      isVerified: json['isVerified'] as bool? ?? false,
+      isOnline: json['isOnline'] as bool? ?? true,
+      categories: (json['categories'] as List<dynamic>? ?? const [])
+          .map((e) => e.toString())
+          .where((c) => c.isNotEmpty && c != 'All')
+          .toList(),
+      products: products,
+      productCount: (json['productCount'] as num?)?.toInt() ?? products.length,
+    );
+  }
+}

@@ -41,6 +41,11 @@ class IkayiApi {
     return Product.fromJson(data);
   }
 
+  Future<StoreChannel> getStore(String slug) async {
+    final data = await client.get('/stores/$slug') as Map<String, dynamic>;
+    return StoreChannel.fromJson(data);
+  }
+
   Future<List<Product>> listMyProducts() async {
     final data = await client.get('/products/mine') as Map<String, dynamic>;
     final items = data['items'] as List<dynamic>? ?? const [];
@@ -180,6 +185,8 @@ class IkayiApi {
     required String name,
     required String storeName,
     required String phone,
+    String? description,
+    String? contactEmail,
   }) async {
     final data = await client.post('/auth/register-vendor', body: {
       'email': email,
@@ -187,6 +194,13 @@ class IkayiApi {
       'name': name,
       'storeName': storeName,
       'phone': phone,
+      if (description != null && description.trim().isNotEmpty)
+        'description': description.trim(),
+      'contactInfo': {
+        'phone': phone,
+        if (contactEmail != null && contactEmail.trim().isNotEmpty)
+          'email': contactEmail.trim(),
+      },
     });
     return _authResult(data);
   }

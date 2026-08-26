@@ -38,7 +38,7 @@ const ORDER_INCLUDE = {
       product: {
         select: { id: true, name: true, imageUrl: true, description: true },
       },
-      vendor: { select: { id: true, storeName: true } },
+      vendor: { select: { id: true, storeName: true, slug: true } },
     },
   },
   supportTicket: true,
@@ -406,6 +406,7 @@ export class OrdersService {
         unitPriceRwf: i.unitPriceRwf,
         selectedVariants: i.selectedVariants,
         vendorName: i.vendor.storeName,
+        vendorSlug: i.vendor.slug,
       })),
       supportTicket: order.supportTicket
         ? {
@@ -435,6 +436,7 @@ export class OrdersService {
         selectedVariants: i.selectedVariants,
         vendorId: i.vendorId,
         vendorName: i.vendor.storeName,
+        vendorSlug: i.vendor.slug,
         mine: i.vendorId === vendorId,
       })),
     };

@@ -6,7 +6,7 @@ import {
 } from '../common/constants';
 
 type ProductWithRelations = Product & {
-  vendor: Pick<Vendor, 'id' | 'storeName'>;
+  vendor: Pick<Vendor, 'id' | 'storeName' | 'slug'>;
   variants: ProductVariant[];
 };
 
@@ -21,6 +21,7 @@ export function toProductResponse(product: ProductWithRelations) {
     imageUrl: product.imageUrl,
     vendorId: product.vendor.id,
     vendorName: product.vendor.storeName,
+    vendorSlug: product.vendor.slug,
     description: product.description,
     badge: product.badge,
     originLabel: product.originLabel,
@@ -41,6 +42,6 @@ export function toProductResponse(product: ProductWithRelations) {
 }
 
 export const productInclude = {
-  vendor: { select: { id: true, storeName: true } },
+  vendor: { select: { id: true, storeName: true, slug: true } },
   variants: true,
 } satisfies Prisma.ProductInclude;
